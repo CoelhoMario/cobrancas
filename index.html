@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Cobranças">
+<title>Cobranças — 3D Figures</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#000;--panel:#0d0e10;--card:#131417;--card2:#1a1c20;--ink:#f2f3f5;--muted:#8b9099;--line:#23262c;
+  --green:#22c55e;--greenbg:rgba(34,197,94,.12);--red:#f87171;--redbg:rgba(248,113,113,.12);
+  --amber:#fbbf24;--amberbg:rgba(251,191,36,.12);--blue:#60a5fa;--bluebg:rgba(96,165,250,.12);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:14px}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 16px 70px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-size:24px;font-weight:800;margin:0;letter-spacing:-.02em}
+.sub{color:var(--muted);margin:2px 0 0}
+.tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px}
+.tabs button{border:0;background:transparent;color:var(--muted);padding:7px 14px;border-radius:999px;font-weight:600}
+.tabs button.on{background:var(--ink);color:#000}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--ink);padding:8px 12px;font-weight:600}
+button:hover{border-color:#3a3f48}
+button.primary{background:var(--green);border-color:var(--green);color:#03140a}
+button.sm{padding:4px 9px;font-size:12px;border-radius:8px}
+button.ghost{background:transparent}
+button.danger{color:var(--red)}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--green);outline-offset:-1px}
+label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted);font-weight:500}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.card h2{font-size:14px;margin:0 0 12px;font-weight:700}
+.card h2 small{color:var(--muted);font-weight:500}
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.kpi .l{color:var(--muted);font-size:12px;font-weight:600}
+.kpi .v{font-size:26px;font-weight:800;margin-top:6px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .s{color:var(--muted);font-size:12px;margin-top:3px}
+.kpi.red .v{color:var(--red)} .kpi.green .v{color:var(--green)} .kpi.amber .v{color:var(--amber)}
+.banner{padding:10px 12px;border-radius:10px;background:var(--amberbg);color:var(--amber);margin-bottom:14px;display:none}
+
+/* assessor */
+.assessor{background:linear-gradient(180deg,#0f1a13,#0d0e10);border:1px solid #1f3a29;border-radius:18px;padding:16px;margin-bottom:16px}
+.ahead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--green);color:#03140a;display:grid;place-items:center;font-weight:800}
+.ahead b{display:block}
+.ahead span{color:var(--muted);font-size:12px}
+.chat{max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.msg{max-width:85%;padding:9px 12px;border-radius:14px;line-height:1.45;white-space:pre-wrap}
+.msg.u{align-self:flex-end;background:var(--card2);border-bottom-right-radius:4px}
+.msg.a{align-self:flex-start;background:var(--greenbg);border:1px solid #1f3a29;border-bottom-left-radius:4px}
+.msg.a.err{background:var(--redbg);border-color:#4a1f1f}
+.acao{align-self:flex-start;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;max-width:85%;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.acao .t{font-size:13px}
+.acao .t b{color:var(--green)}
+.acao.done{opacity:.55}
+.composer{display:flex;gap:8px;align-items:flex-end}
+.composer textarea{flex:1;resize:none;min-height:44px;max-height:120px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{font-size:12px;padding:5px 10px;border-radius:999px;background:var(--card2);border:1px solid var(--line);color:var(--muted);cursor:pointer;font-weight:500}
+.chip:hover{color:var(--ink)}
+.attach{position:relative;overflow:hidden}
+.attach input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.thumb{font-size:12px;color:var(--green);margin-top:6px}
+
+/* alerts */
+.alerts{display:flex;flex-direction:column;gap:8px}
+.alert{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:var(--card2);border:1px solid var(--line)}
+.dot{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:none}
+.alert .x{flex:1}
+.alert .x div{color:var(--muted);font-size:12px;margin-top:2px}
+
+/* table */
+.toolbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.seg button{padding:6px 11px;font-size:12px}
+.seg button.on{background:var(--ink);color:#000;border-color:var(--ink)}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.t-pago{background:var(--greenbg);color:var(--green)}
+.t-atrasado{background:var(--redbg);color:var(--red)}
+.t-parcial{background:var(--amberbg);color:var(--amber)}
+.t-pendente{background:var(--bluebg);color:var(--blue)}
+.desc{color:var(--muted);font-size:12px;margin-top:2px}
+.acts{display:flex;gap:4px;flex-wrap:wrap}
+a.wa{font-size:12px;color:var(--green);text-decoration:none;font-weight:700;padding:4px 9px;border:1px solid #1f3a29;border-radius:8px;background:var(--greenbg)}
+.empty{text-align:center;color:var(--muted);padding:28px}
+
+/* charts */
+.bars{display:flex;align-items:flex-end;gap:10px;height:170px;padding-top:10px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px;min-width:0}
+.bar .b{width:100%;max-width:46px;border-radius:8px 8px 3px 3px;background:var(--green);min-height:2px;transition:height .4s}
+.bar .b.red{background:var(--red)}
+.bar .b.dim{background:#2a2e35}
+.bar .val{font-size:11px;color:var(--ink);font-weight:600;white-space:nowrap}
+.bar .lbl{font-size:11px;color:var(--muted);white-space:nowrap}
+
+form .fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+details summary{cursor:pointer;font-weight:700;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"+ ";color:var(--green)}
+details[open] summary::before{content:"– "}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+.modal.open{display:flex}
+.modal .box{background:var(--card);border-radius:16px;padding:18px;width:100%;max-width:420px;border:1px solid var(--line)}
+.modal h3{margin:0 0 10px;font-size:16px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#000;padding:10px 15px;border-radius:10px;font-size:13px;font-weight:600;display:none;z-index:20}
+.view{display:none}.view.on{display:block}
+.mt{margin-top:14px}
+.note{font-size:12px;color:var(--muted);margin-top:14px}
+
+.acao.col{flex-direction:column;align-items:stretch;max-width:100%;width:100%}
+.mini{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.mini input{padding:7px 9px}
+.micbtn{width:48px;height:48px;border-radius:50%;font-size:20px;padding:0;flex:none;background:var(--card2)}
+.micbtn.rec{background:var(--red);border-color:var(--red);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.6)}50%{box-shadow:0 0 0 10px rgba(248,113,113,0)}}
+.msg b{color:var(--green)}
+body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+@media (max-width:640px){.tabs{width:100%;overflow-x:auto}.tabs button{padding:7px 10px;font-size:13px;white-space:nowrap}.chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.chip{white-space:nowrap}.kpi .v{font-size:22px}th,td{padding:8px 5px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Cobranças</h1>
+      <p class="sub">3D Figures Jlle Printer · <span id="hojeTxt"></span></p>
+    </div>
+    <div class="tabs" id="tabs">
+      <button data-v="geral" class="on">Geral</button>
+      <button data-v="receber">A receber</button>
+      <button data-v="clientes">Clientes</button>
+      <button data-v="recebidos">Recebidos</button>
+      <button data-v="backup">Backup</button>
+    </div>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <section class="assessor">
+    <div class="ahead">
+      <div class="avatar">$</div>
+      <div><b>Assessor de cobranças</b><span id="aStatus">Toque no microfone e fale, ou digite.</span></div>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="chips" id="chips">
+      <span class="chip">Pedro me deve 120 do suporte de óculos, vence sexta</span>
+      <span class="chip">A Ana pagou 50 no Pix</span>
+      <span class="chip">Marcos encomendou 3 chaveiros por 45, pagou 15, o resto dia 20</span>
+      <span class="chip">Quem está me devendo?</span>
+      <span class="chip">Quanto entra essa semana?</span>
+    </div>
+    <div class="composer">
+      <button type="button" id="mic" class="micbtn" title="Falar">🎤</button>
+      <textarea id="entrada" rows="1" placeholder="Fale ou digite: “João me deve 80 do chaveiro, vence amanhã”"></textarea>
+      <button class="primary" id="enviar">Enviar</button>
+    </div>
+    <div class="thumb" id="ouvindo"></div>
+  </section>
+
+  <div class="view on" id="v-geral">
+    <div class="grid g4">
+      <div class="card kpi"><div class="l">Total a receber</div><div class="v" id="kAberto">—</div><div class="s" id="kAbertoS"></div></div>
+      <div class="card kpi red"><div class="l">Em atraso</div><div class="v" id="kAtraso">—</div><div class="s" id="kAtrasoS"></div></div>
+      <div class="card kpi amber"><div class="l">Vence nos próximos 7 dias</div><div class="v" id="kSemana">—</div><div class="s" id="kSemanaS"></div></div>
+      <div class="card kpi green"><div class="l">Recebido este mês</div><div class="v" id="kMes">—</div><div class="s" id="kMesS"></div></div>
+    </div>
+    <div class="grid g2 mt">
+      <div class="card"><h2>Alertas</h2><div class="alerts" id="alertas"></div></div>
+      <div class="card"><h2>Próximos vencimentos</h2><div class="tblwrap"><table><tbody id="proximos"></tbody></table></div></div>
+    </div>
+    <div class="grid g2 mt">
+      <div class="card"><h2>Previsão de entradas <small>· por semana</small></h2><div class="bars" id="chartPrev"></div></div>
+      <div class="card"><h2>Recebido por mês <small>· últimos 6 meses</small></h2><div class="bars" id="chartMes"></div></div>
+    </div>
+  </div>
+
+  <div class="view" id="v-receber">
+    <div class="card">
+      <details id="detForm">
+        <summary id="formTitle">Lançar manualmente</summary>
+        <form id="form" autocomplete="off" class="mt">
+          <div class="fg">
+            <label>Cliente *<input name="cliente" list="listaClientes" required maxlength="80"></label>
+            <label>WhatsApp<input name="telefone" placeholder="(48) 99999-9999" maxlength="25" inputmode="tel"></label>
+            <label>Descrição / pedido<input name="descricao" maxlength="140"></label>
+            <label>Valor total (R$) *<input name="valor" inputmode="decimal" required placeholder="0,00"></label>
+            <label>Já recebido (R$)<input name="recebido" inputmode="decimal" placeholder="0,00"></label>
+            <label>Data da venda<input name="dataVenda" type="date"></label>
+            <label>Vencimento *<input name="vencimento" type="date" required></label>
+            <label>Forma
+              <select name="forma"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Boleto</option><option>Transferência</option><option>Outro</option></select>
+            </label>
+          </div>
+          <label class="mt">Observações<textarea name="obs" rows="2" maxlength="300"></textarea></label>
+          <div class="row mt">
+            <button class="primary" type="submit" id="btnSalvar">Salvar lançamento</button>
+            <button type="button" id="btnCancelar" style="display:none">Cancelar edição</button>
+          </div>
+          <datalist id="listaClientes"></datalist>
+        </form>
+      </details>
+    </div>
+    <div class="card mt">
+      <div class="toolbar">
+        <div class="seg" id="seg">
+          <button data-f="abertos" class="on">Em aberto</button>
+          <button data-f="atrasados">Atrasados</button>
+          <button data-f="pagos">Pagos</button>
+          <button data-f="todos">Todos</button>
+        </div>
+        <input id="busca" placeholder="Buscar cliente ou pedido…" style="min-width:200px">
+      </div>
+      <div class="tblwrap">
+        <table>
+          <thead><tr><th>Vencimento</th><th>Cliente</th><th>Status</th><th class="num">Total</th><th class="num">Recebido</th><th class="num">Falta</th><th>Ações</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="view" id="v-clientes">
+    <div class="card">
+      <h2>Saldo por cliente</h2>
+      <div class="tblwrap"><table>
+        <thead><tr><th>Cliente</th><th class="num">Em aberto</th><th class="num">Em atraso</th><th class="num">Já pagou</th><th class="num">Devendo</th><th></th></tr></thead>
+        <tbody id="tclientes"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="view" id="v-recebidos">
+    <div class="card">
+      <h2>Pagamentos recebidos</h2>
+      <div class="tblwrap"><table>
+        <thead><tr><th>Data</th><th>Cliente</th><th>Pedido</th><th class="num">Valor</th></tr></thead>
+        <tbody id="trecebidos"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="view" id="v-backup">
+    <div class="card">
+      <h2>Backup dos seus dados</h2>
+      <p class="desc">Os lançamentos ficam guardados só neste aparelho. Faça um backup de vez em quando (ex.: toda semana) e guarde o arquivo no Google Drive ou mande para você no WhatsApp. Se trocar de celular ou limpar o navegador, é só importar o arquivo.</p>
+      <p class="desc" id="ultimoBackup"></p>
+      <div class="row mt">
+        <button class="primary" id="btnExport">Baixar backup</button>
+        <label class="attach"><button type="button" tabindex="-1">Restaurar backup</button><input type="file" id="fileImport" accept=".json,application/json"></label>
+        <button id="btnCsv">Copiar planilha (Excel)</button>
+      </div>
+    </div>
+    <div class="card mt">
+      <h2>Trazer lançamentos do organizador do Claude</h2>
+      <p class="desc">No organizador antigo, toque em <b>Copiar planilha</b> e cole aqui.</p>
+      <textarea id="tsv" rows="5" style="width:100%;margin-top:8px" placeholder="Cole aqui…"></textarea>
+      <div class="row mt"><button id="btnTsv">Importar</button></div>
+    </div>
+    <div class="card mt">
+      <h2>Instalar no celular</h2>
+      <p class="desc"><b>Android (Chrome):</b> menu ⋮ → <i>Instalar app</i> ou <i>Adicionar à tela inicial</i>.<br><b>iPhone (Safari):</b> botão Compartilhar → <i>Adicionar à Tela de Início</i>.</p>
+      <button id="btnInstalar" class="primary mt" style="display:none">Instalar agora</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="mPag"><div class="box">
+  <h3>Registrar pagamento</h3><p class="desc" id="mPagInfo"></p>
+  <label class="mt">Valor recebido agora (R$)<input id="mPagValor" inputmode="decimal"></label>
+  <label class="mt">Data<input id="mPagData" type="date"></label>
+  <div class="row mt" style="justify-content:flex-end"><button type="button" data-close>Cancelar</button><button type="button" class="primary" id="mPagOk">Confirmar</button></div>
+</div></div>
+<div class="modal" id="mDel"><div class="box">
+  <h3>Excluir lançamento?</h3><p class="desc" id="mDelInfo"></p>
+  <div class="row mt" style="justify-content:flex-end"><button type="button" data-close>Cancelar</button><button type="button" class="primary" id="mDelOk" style="background:var(--red);border-color:var(--red);color:#1a0505">Excluir</button></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script src="parser.js"></script>
+<script>
+(function(){
+  const KEY="cobrancas_3dfigures_v1";
+  let itens=[], filtro="abertos", editId=null, alvo=null;
+  const $=s=>document.querySelector(s);
+  const brl=n=>(Number(n)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  const brlCurto=n=>{n=Number(n)||0; return n>=1000?"R$ "+(n/1000).toLocaleString("pt-BR",{maximumFractionDigits:1})+"k":"R$ "+Math.round(n).toLocaleString("pt-BR");};
+  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const num=v=>{ if(v==null) return 0; if(typeof v==="number") return Math.round(v*100)/100; let s=String(v).trim().replace(/[R$\s]/g,""); if(s.includes(",")) s=s.replace(/\./g,"").replace(",","."); const n=parseFloat(s); return isFinite(n)?Math.round(n*100)/100:0; };
+  const {iso,addDias}=Interpretador;
+  const hoje=()=>iso(new Date());
+  const fmtData=s=>s?s.split("-").reverse().join("/"):"—";
+  const vir=n=>String(Math.round((Number(n)||0)*100)/100).replace(".",",");
+  const DIAS=["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
+  const MESES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  const validData=s=>typeof s==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(s);
+  const novoId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  function toast(m){ const t=$("#toast"); t.textContent=m; t.style.display="block"; clearTimeout(toast._t); toast._t=setTimeout(()=>t.style.display="none",2600); }
+  function banner(m){ const b=$("#banner"); b.textContent=m||""; b.style.display=m?"block":"none"; }
+  $("#hojeTxt").textContent=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"});
+
+  // ---------- armazenamento local
+  function carregar(){ try{ const d=JSON.parse(localStorage.getItem(KEY)||"[]"); itens=Array.isArray(d)?d:[]; }catch(_){ itens=[]; banner("Não consegui ler os dados salvos neste aparelho."); } }
+  function salvar(){ try{ localStorage.setItem(KEY,JSON.stringify(itens)); }catch(_){ banner("Não consegui salvar neste aparelho. Faça um backup agora."); } render(); }
+  carregar();
+  if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+
+  const falta=it=>Math.max(0,Math.round(((it.valor||0)-(it.recebido||0))*100)/100);
+  function status(it){ if(falta(it)<=0.004) return "pago"; if(it.vencimento&&it.vencimento<hoje()) return "atrasado"; if((it.recebido||0)>0) return "parcial"; return "pendente"; }
+  const rotulo={pago:"Pago",atrasado:"Atrasado",parcial:"Parcial",pendente:"A vencer"};
+  const diasAtraso=it=>Math.round((new Date(hoje()+"T12:00:00")-new Date(it.vencimento+"T12:00:00"))/864e5);
+  const clientes=()=>[...new Set(itens.map(i=>(i.cliente||"").trim()).filter(Boolean))].sort();
+
+  function waLink(it){
+    const tel=(it.telefone||"").replace(/\D/g,""); const f=falta(it);
+    if(!tel||f<=0) return "";
+    const full=tel.length<=11?"55"+tel:tel;
+    const msg="Olá "+(it.cliente||"")+", tudo bem? Aqui é da 3D Figures Jlle Printer. "+(status(it)==="atrasado"?"Passando para lembrar do pagamento em aberto de ":"Lembrete do pagamento de ")+brl(f)+(it.descricao?" referente a "+it.descricao:"")+", com vencimento em "+fmtData(it.vencimento)+". Qualquer dúvida estou à disposição. Obrigado!";
+    return '<a class="wa" target="_blank" rel="noopener" href="https://wa.me/'+full+'?text='+encodeURIComponent(msg)+'">Cobrar no WhatsApp</a>';
+  }
+
+  // ---------- operações
+  function criar(d){
+    const valor=num(d.valor), recebido=Math.min(num(d.recebido),valor);
+    itens.push({id:novoId(), cliente:String(d.cliente||"").trim().slice(0,80), telefone:String(d.telefone||"").trim().slice(0,25), descricao:String(d.descricao||"").trim().slice(0,140),
+      valor, recebido, dataVenda:validData(d.dataVenda)?d.dataVenda:hoje(), vencimento:validData(d.vencimento)?d.vencimento:hoje(), forma:String(d.forma||"Pix"), obs:String(d.obs||"").trim().slice(0,300),
+      pagamentos:recebido>0?[{valor:recebido,data:hoje()}]:[], criadoEm:new Date().toISOString()});
+    salvar();
+  }
+  function pagar(id,valor,data){
+    const it=itens.find(i=>i.id===id); if(!it) return false;
+    const v=num(valor); if(v<=0) return false;
+    it.pagamentos=[...(it.pagamentos||[]),{valor:v,data:validData(data)?data:hoje()}];
+    it.recebido=Math.round(((Number(it.recebido)||0)+v)*100)/100;
+    salvar(); return true;
+  }
+
+  // ---------- render
+  function render(){
+    const h=hoje(), sem=addDias(h,7), mes=h.slice(0,7);
+    let aberto=0,nA=0,atraso=0,nAt=0,semana=0,nS=0,recMes=0,nM=0;
+    for(const it of itens){
+      const f=falta(it), st=status(it);
+      if(f>0){aberto+=f;nA++;}
+      if(st==="atrasado"){atraso+=f;nAt++;}
+      if(f>0&&it.vencimento>=h&&it.vencimento<=sem){semana+=f;nS++;}
+      for(const p of (it.pagamentos||[])) if((p.data||"").slice(0,7)===mes){recMes+=Number(p.valor)||0;nM++;}
+    }
+    $("#kAberto").textContent=brl(aberto); $("#kAbertoS").textContent=nA+" lançamento(s) em aberto";
+    $("#kAtraso").textContent=brl(atraso); $("#kAtrasoS").textContent=nAt?nAt+" vencido(s)":"Nada atrasado";
+    $("#kSemana").textContent=brl(semana); $("#kSemanaS").textContent=nS+" lançamento(s)";
+    $("#kMes").textContent=brl(recMes); $("#kMesS").textContent=nM+" pagamento(s) em "+MESES[+mes.slice(5)-1];
+
+    const prev=[{lbl:"Atrasado",v:atraso,cls:"red"}];
+    for(let w=0;w<6;w++){ const ini=addDias(h,w*7), fim=addDias(h,w*7+6); let v=0; for(const it of itens){ const f=falta(it); if(f>0&&it.vencimento>=ini&&it.vencimento<=fim) v+=f; } prev.push({lbl:w===0?"Esta sem.":fmtData(ini).slice(0,5),v}); }
+    bars("#chartPrev",prev);
+    const ms=[]; const d=new Date(h+"T12:00:00"); d.setDate(1);
+    for(let i=5;i>=0;i--){ const x=new Date(d); x.setMonth(d.getMonth()-i); ms.push({k:iso(x).slice(0,7),lbl:MESES[x.getMonth()],v:0}); }
+    for(const it of itens) for(const p of (it.pagamentos||[])){ const m=ms.find(m=>m.k===(p.data||"").slice(0,7)); if(m) m.v+=Number(p.valor)||0; }
+    bars("#chartMes",ms.map((m,i)=>({lbl:m.lbl,v:m.v,cls:i===5?"":"dim"})));
+
+    const al=[];
+    const atrasados=itens.filter(i=>status(i)==="atrasado").sort((a,b)=>a.vencimento.localeCompare(b.vencimento));
+    for(const it of atrasados.slice(0,5)) al.push({c:"var(--red)",t:esc(it.cliente)+" está "+diasAtraso(it)+" dia(s) atrasado",d:brl(falta(it))+(it.descricao?" · "+esc(it.descricao):"")+" · venceu "+fmtData(it.vencimento),wa:waLink(it)});
+    if(atrasados.length>5) al.push({c:"var(--red)",t:"E mais "+(atrasados.length-5)+" atrasado(s)",d:"Veja em A receber → Atrasados"});
+    for(const it of itens.filter(i=>falta(i)>0&&i.vencimento===h)) al.push({c:"var(--amber)",t:esc(it.cliente)+" vence hoje",d:brl(falta(it))+(it.descricao?" · "+esc(it.descricao):""),wa:waLink(it)});
+    for(const it of itens.filter(i=>falta(i)>0&&i.vencimento===addDias(h,1))) al.push({c:"var(--blue)",t:esc(it.cliente)+" vence amanhã",d:brl(falta(it))+(it.descricao?" · "+esc(it.descricao):""),wa:waLink(it)});
+    const semTel=itens.filter(i=>falta(i)>0&&!(i.telefone||"").replace(/\D/g,"")).length;
+    if(semTel) al.push({c:"var(--muted)",t:semTel+" em aberto sem WhatsApp",d:"Adicione o telefone para cobrar com um toque"});
+    const ult=localStorage.getItem(KEY+"_bk");
+    if(itens.length&&(!ult||(Date.now()-Number(ult))>7*864e5)) al.push({c:"var(--muted)",t:"Faça um backup",d:ult?"Último backup há mais de 7 dias":"Você ainda não fez nenhum backup",bk:true});
+    $("#alertas").innerHTML=al.length?al.map(a=>'<div class="alert"><span class="dot" style="background:'+a.c+'"></span><div class="x"><b>'+a.t+'</b><div>'+a.d+'</div></div>'+(a.wa||"")+(a.bk?'<button class="sm" data-go="backup">Backup</button>':'')+'</div>').join(""):'<div class="empty">Tudo em dia. ✅</div>';
+    $("#ultimoBackup").textContent=ult?"Último backup: "+new Date(Number(ult)).toLocaleString("pt-BR"):"Nenhum backup feito ainda.";
+
+    const prox=itens.filter(i=>falta(i)>0&&i.vencimento>=h).sort((a,b)=>a.vencimento.localeCompare(b.vencimento)).slice(0,6);
+    $("#proximos").innerHTML=prox.length?prox.map(it=>'<tr><td>'+fmtData(it.vencimento)+'<div class="desc">'+DIAS[new Date(it.vencimento+"T12:00:00").getDay()]+'</div></td><td><b>'+esc(it.cliente)+'</b>'+(it.descricao?'<div class="desc">'+esc(it.descricao)+'</div>':'')+'</td><td class="num"><b>'+brl(falta(it))+'</b></td></tr>').join(""):'<tr><td class="empty">Nenhum vencimento futuro.</td></tr>';
+
+    const q=$("#busca").value.trim().toLowerCase();
+    const lista=itens.filter(it=>{ const st=status(it);
+      if(filtro==="abertos"&&st==="pago") return false;
+      if(filtro==="atrasados"&&st!=="atrasado") return false;
+      if(filtro==="pagos"&&st!=="pago") return false;
+      if(q&&!((it.cliente||"")+" "+(it.descricao||"")).toLowerCase().includes(q)) return false;
+      return true;
+    }).sort((a,b)=>filtro==="pagos"?(b.vencimento||"").localeCompare(a.vencimento||""):(a.vencimento||"").localeCompare(b.vencimento||""));
+    $("#tbody").innerHTML=lista.length?lista.map(it=>{ const st=status(it), f=falta(it);
+      return '<tr><td>'+fmtData(it.vencimento)+'</td><td><b>'+esc(it.cliente)+'</b>'+(it.descricao?'<div class="desc">'+esc(it.descricao)+'</div>':'')+(it.obs?'<div class="desc">'+esc(it.obs)+'</div>':'')+'</td>'+
+      '<td><span class="tag t-'+st+'">'+rotulo[st]+'</span><div class="desc">'+esc(it.forma||"")+'</div></td>'+
+      '<td class="num">'+brl(it.valor)+'</td><td class="num">'+brl(it.recebido)+'</td><td class="num"><b>'+brl(f)+'</b></td>'+
+      '<td><div class="acts">'+(f>0?'<button class="sm" data-a="pag" data-id="'+esc(it.id)+'">Receber</button>':'')+
+      '<button class="sm ghost" data-a="edit" data-id="'+esc(it.id)+'">Editar</button><button class="sm ghost danger" data-a="del" data-id="'+esc(it.id)+'">Excluir</button>'+waLink(it)+'</div></td></tr>';
+    }).join(""):'<tr><td colspan="7" class="empty">'+(itens.length?"Nada neste filtro.":"Nenhum lançamento ainda. Fale com o assessor acima ou lance manualmente.")+'</td></tr>';
+
+    const mapa={};
+    for(const it of itens){ const k=(it.cliente||"").trim()||"(sem nome)"; const m=mapa[k]||(mapa[k]={n:0,at:0,t:0,pago:0}); const f=falta(it); m.pago+=Number(it.recebido)||0; if(f>0){m.n++;m.t+=f;} if(status(it)==="atrasado") m.at+=f; }
+    const cl=Object.entries(mapa).sort((a,b)=>b[1].t-a[1].t||b[1].pago-a[1].pago);
+    $("#tclientes").innerHTML=cl.length?cl.map(([c,m])=>'<tr><td><b>'+esc(c)+'</b></td><td class="num">'+m.n+'</td><td class="num" style="color:'+(m.at>0?'var(--red)':'inherit')+'">'+brl(m.at)+'</td><td class="num">'+brl(m.pago)+'</td><td class="num"><b>'+brl(m.t)+'</b></td><td><button class="sm ghost" data-cli="'+esc(c)+'">Ver</button></td></tr>').join(""):'<tr><td colspan="6" class="empty">Nenhum cliente ainda.</td></tr>';
+
+    const pags=[]; for(const it of itens) for(const p of (it.pagamentos||[])) pags.push({...p,cliente:it.cliente,descricao:it.descricao});
+    pags.sort((a,b)=>(b.data||"").localeCompare(a.data||""));
+    $("#trecebidos").innerHTML=pags.length?pags.slice(0,300).map(p=>'<tr><td>'+fmtData(p.data)+'</td><td>'+esc(p.cliente)+'</td><td class="desc">'+esc(p.descricao||"")+'</td><td class="num" style="color:var(--green)"><b>'+brl(p.valor)+'</b></td></tr>').join(""):'<tr><td colspan="4" class="empty">Nenhum pagamento registrado.</td></tr>';
+
+    $("#listaClientes").innerHTML=clientes().map(n=>'<option value="'+esc(n)+'">').join("");
+  }
+  function bars(sel,arr){ const max=Math.max(1,...arr.map(a=>a.v)); $(sel).innerHTML=arr.map(a=>'<div class="bar"><span class="val">'+(a.v>0?brlCurto(a.v):"")+'</span><div class="b '+(a.cls||"")+'" style="height:'+Math.max(2,Math.round(a.v/max*120))+'px"></div><span class="lbl">'+esc(a.lbl)+'</span></div>').join(""); }
+
+  // ---------- navegação
+  function irPara(v){ document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.v===v)); document.querySelectorAll(".view").forEach(x=>x.classList.toggle("on",x.id==="v-"+v)); }
+  $("#tabs").addEventListener("click",e=>{ const b=e.target.closest("button"); if(b) irPara(b.dataset.v); });
+  document.addEventListener("click",e=>{ const b=e.target.closest("[data-go]"); if(b) irPara(b.dataset.go); });
+  $("#seg").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; filtro=b.dataset.f; document.querySelectorAll("#seg button").forEach(x=>x.classList.toggle("on",x===b)); render(); });
+  $("#busca").addEventListener("input",render);
+  $("#tclientes").addEventListener("click",e=>{ const b=e.target.closest("button[data-cli]"); if(!b) return; $("#busca").value=b.dataset.cli; filtro="todos"; document.querySelectorAll("#seg button").forEach(x=>x.classList.toggle("on",x.dataset.f==="todos")); irPara("receber"); render(); });
+
+  // ---------- formulário manual
+  const form=$("#form");
+  function limpar(){ form.reset(); form.dataVenda.value=hoje(); form.vencimento.value=hoje(); editId=null; $("#formTitle").textContent="Lançar manualmente"; $("#btnSalvar").textContent="Salvar lançamento"; $("#btnCancelar").style.display="none"; }
+  limpar();
+  $("#btnCancelar").onclick=limpar;
+  form.addEventListener("submit",e=>{
+    e.preventDefault();
+    const valor=num(form.valor.value), recebido=num(form.recebido.value);
+    if(valor<=0){ toast("Informe um valor maior que zero."); return; }
+    if(editId){
+      const it=itens.find(i=>i.id===editId); if(!it) return;
+      const antes=Number(it.recebido)||0;
+      if(recebido!==antes){ const dif=Math.round((recebido-antes)*100)/100; if(dif>0) it.pagamentos=[...(it.pagamentos||[]),{valor:dif,data:hoje()}]; else it.pagamentos=recebido>0?[{valor:recebido,data:hoje()}]:[]; }
+      Object.assign(it,{cliente:form.cliente.value.trim(),telefone:form.telefone.value.trim(),descricao:form.descricao.value.trim(),valor,recebido,dataVenda:form.dataVenda.value||"",vencimento:form.vencimento.value,forma:form.forma.value,obs:form.obs.value.trim()});
+      salvar(); toast("Lançamento atualizado.");
+    } else { criar({cliente:form.cliente.value,telefone:form.telefone.value,descricao:form.descricao.value,valor,recebido,dataVenda:form.dataVenda.value,vencimento:form.vencimento.value,forma:form.forma.value,obs:form.obs.value}); toast("Lançamento salvo."); }
+    limpar();
+  });
+  $("#tbody").addEventListener("click",e=>{
+    const b=e.target.closest("button[data-a]"); if(!b) return;
+    const it=itens.find(i=>i.id===b.dataset.id); if(!it) return;
+    if(b.dataset.a==="edit"){
+      editId=it.id; $("#detForm").open=true;
+      form.cliente.value=it.cliente||""; form.telefone.value=it.telefone||""; form.descricao.value=it.descricao||"";
+      form.valor.value=vir(it.valor); form.recebido.value=it.recebido?vir(it.recebido):"";
+      form.dataVenda.value=it.dataVenda||""; form.vencimento.value=it.vencimento||""; form.forma.value=it.forma||"Pix"; form.obs.value=it.obs||"";
+      $("#formTitle").textContent="Editando: "+(it.cliente||""); $("#btnSalvar").textContent="Salvar alterações"; $("#btnCancelar").style.display="";
+      form.scrollIntoView({behavior:"smooth",block:"center"});
+    } else if(b.dataset.a==="pag"){
+      alvo=it; $("#mPagInfo").textContent=(it.cliente||"")+" — falta "+brl(falta(it));
+      $("#mPagValor").value=vir(falta(it)); $("#mPagData").value=hoje(); $("#mPag").classList.add("open");
+    } else if(b.dataset.a==="del"){
+      alvo=it; $("#mDelInfo").textContent=(it.cliente||"")+" — "+brl(it.valor)+(it.descricao?" ("+it.descricao+")":""); $("#mDel").classList.add("open");
+    }
+  });
+  document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>b.closest(".modal").classList.remove("open"));
+  document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{ if(e.target===m) m.classList.remove("open"); }));
+  $("#mPagOk").onclick=()=>{ if(!alvo) return; if(!pagar(alvo.id,$("#mPagValor").value,$("#mPagData").value)){ toast("Informe o valor recebido."); return; } $("#mPag").classList.remove("open"); toast("Pagamento registrado."); };
+  $("#mDelOk").onclick=()=>{ if(!alvo) return; itens=itens.filter(i=>i.id!==alvo.id); salvar(); $("#mDel").classList.remove("open"); toast("Lançamento excluído."); if(editId===alvo.id) limpar(); };
+
+  // ---------- ASSESSOR (sem IA paga: regras locais)
+  const chat=$("#chat");
+  function bolha(html,quem,err){ const d=document.createElement("div"); d.className="msg "+quem+(err?" err":""); d.innerHTML=html; chat.appendChild(d); chat.scrollTop=chat.scrollHeight; return d; }
+  function abertosDe(nome){ return itens.filter(i=>falta(i)>0&&(i.cliente||"").toLowerCase()===String(nome||"").toLowerCase()).sort((a,b)=>(a.vencimento||"").localeCompare(b.vencimento||"")); }
+
+  function responderPergunta(r){
+    const h=hoje(); const ab=itens.filter(i=>falta(i)>0);
+    const linha=i=>"• "+esc(i.cliente)+": "+brl(falta(i))+" (vence "+fmtData(i.vencimento)+")";
+    if(r.sobre==="atrasados"){ const l=ab.filter(i=>status(i)==="atrasado"); return l.length?"<b>Atrasados ("+brl(l.reduce((s,i)=>s+falta(i),0))+"):</b>\n"+l.map(i=>"• "+esc(i.cliente)+": "+brl(falta(i))+" — "+diasAtraso(i)+" dia(s)").join("\n"):"Ninguém atrasado. 👍"; }
+    if(r.sobre==="hoje"){ const l=ab.filter(i=>i.vencimento===h); return l.length?"<b>Vence hoje:</b>\n"+l.map(linha).join("\n"):"Nada vence hoje."; }
+    if(r.sobre==="semana"){ const l=ab.filter(i=>i.vencimento>=h&&i.vencimento<=addDias(h,7)); const at=ab.filter(i=>status(i)==="atrasado").reduce((s,i)=>s+falta(i),0);
+      return (l.length?"<b>Próximos 7 dias: "+brl(l.reduce((s,i)=>s+falta(i),0))+"</b>\n"+l.map(linha).join("\n"):"Nada previsto para os próximos 7 dias.")+(at>0?"\n\nE tem "+brl(at)+" em atraso para cobrar.":""); }
+    if(r.sobre==="mes"){ const m=h.slice(0,7); let t=0; for(const it of itens) for(const p of (it.pagamentos||[])) if((p.data||"").slice(0,7)===m) t+=Number(p.valor)||0; return "Neste mês você recebeu <b>"+brl(t)+"</b>."; }
+    if(r.sobre==="cliente"){ const l=abertosDe(r.cliente); return l.length?"<b>"+esc(r.cliente)+" deve "+brl(l.reduce((s,i)=>s+falta(i),0))+":</b>\n"+l.map(i=>"• "+brl(falta(i))+(i.descricao?" — "+esc(i.descricao):"")+" (vence "+fmtData(i.vencimento)+")").join("\n"):esc(r.cliente)+" não deve nada. 👍"; }
+    if(!ab.length) return "Ninguém está te devendo. 🎉";
+    const por={}; for(const i of ab){ por[i.cliente]=(por[i.cliente]||0)+falta(i); }
+    return "<b>Total a receber: "+brl(ab.reduce((s,i)=>s+falta(i),0))+"</b>\n"+Object.entries(por).sort((a,b)=>b[1]-a[1]).map(([c,v])=>"• "+esc(c)+": "+brl(v)).join("\n");
+  }
+
+  function cartaoDivida(r){
+    const c=document.createElement("div"); c.className="acao col";
+    c.innerHTML='<div class="t"><b>Nova cobrança</b> — confira e confirme:</div>'+
+      '<div class="mini">'+
+      '<label>Cliente<input data-k="cliente" list="listaClientes" value="'+esc(r.cliente)+'"></label>'+
+      '<label>Pedido<input data-k="descricao" value="'+esc(r.descricao)+'"></label>'+
+      '<label>Total (R$)<input data-k="valor" inputmode="decimal" value="'+(r.valor?vir(r.valor):"")+'"></label>'+
+      '<label>Já pagou (R$)<input data-k="recebido" inputmode="decimal" value="'+(r.recebido?vir(r.recebido):"")+'"></label>'+
+      '<label>Vencimento<input data-k="vencimento" type="date" value="'+esc(r.vencimento||hoje())+'"></label>'+
+      '<label>WhatsApp<input data-k="telefone" inputmode="tel" value="'+esc(r.telefone||telDe(r.cliente))+'"></label>'+
+      '</div>'+(!r.vencimento?'<div class="desc">Não ouvi o vencimento — deixei hoje. Ajuste se precisar.</div>':'')+
+      '<div class="row"><button class="sm primary" data-ok>Confirmar</button><button class="sm ghost" data-no>Descartar</button></div>';
+    c.querySelector("[data-ok]").onclick=()=>{
+      const g=k=>c.querySelector('[data-k="'+k+'"]').value;
+      if(!g("cliente").trim()){ toast("Informe o cliente."); return; }
+      if(num(g("valor"))<=0){ toast("Informe o valor total."); return; }
+      criar({cliente:g("cliente"),descricao:g("descricao"),valor:g("valor"),recebido:g("recebido"),vencimento:g("vencimento"),telefone:g("telefone"),forma:r.forma});
+      c.classList.add("done"); c.querySelectorAll("input,button").forEach(x=>x.disabled=true); c.querySelector("[data-ok]").textContent="Lançado ✓";
+    };
+    c.querySelector("[data-no]").onclick=()=>{ c.classList.add("done"); c.querySelectorAll("input,button").forEach(x=>x.disabled=true); c.querySelector("[data-no]").textContent="Descartado"; };
+    chat.appendChild(c); chat.scrollTop=chat.scrollHeight;
+  }
+  function telDe(nome){ const it=itens.find(i=>(i.cliente||"").toLowerCase()===String(nome||"").toLowerCase()&&i.telefone); return it?it.telefone:""; }
+
+  function cartaoPagamento(r){
+    const l=abertosDe(r.cliente);
+    if(!r.cliente){ bolha("Quem pagou? Ex.: “A Ana pagou 50”.","a",true); return; }
+    if(!l.length){ bolha(esc(r.cliente)+" não tem nada em aberto. Confira o nome na aba Clientes.","a",true); return; }
+    const totalDev=l.reduce((s,i)=>s+falta(i),0);
+    let v=r.quitar?totalDev:r.valor;
+    const c=document.createElement("div"); c.className="acao col";
+    c.innerHTML='<div class="t"><b>Pagamento de '+esc(r.cliente)+'</b> — deve '+brl(totalDev)+'</div>'+
+      '<div class="mini"><label>Valor recebido (R$)<input data-k="valor" inputmode="decimal" value="'+(v?vir(v):"")+'"></label>'+
+      '<label>Data<input data-k="data" type="date" value="'+esc(r.data||hoje())+'"></label></div>'+
+      '<div class="desc">Vou abater do mais antigo para o mais novo ('+l.length+' em aberto).</div>'+
+      '<div class="row"><button class="sm primary" data-ok>Confirmar</button><button class="sm ghost" data-no>Descartar</button></div>';
+    c.querySelector("[data-ok]").onclick=()=>{
+      let resto=num(c.querySelector('[data-k="valor"]').value); const data=c.querySelector('[data-k="data"]').value;
+      if(resto<=0){ toast("Informe o valor."); return; }
+      const excesso=Math.max(0,Math.round((resto-totalDev)*100)/100);
+      for(const it of abertosDe(r.cliente)){ if(resto<=0) break; const p=Math.min(resto,falta(it)); it.pagamentos=[...(it.pagamentos||[]),{valor:p,data:validData(data)?data:hoje()}]; it.recebido=Math.round(((Number(it.recebido)||0)+p)*100)/100; resto=Math.round((resto-p)*100)/100; }
+      salvar();
+      c.classList.add("done"); c.querySelectorAll("input,button").forEach(x=>x.disabled=true); c.querySelector("[data-ok]").textContent="Baixa feita ✓";
+      const agora=abertosDe(r.cliente).reduce((s,i)=>s+falta(i),0);
+      bolha(agora>0?esc(r.cliente)+" ainda deve "+brl(agora)+".":esc(r.cliente)+" quitou tudo. 🎉"+(excesso>0?" (Sobrou "+brl(excesso)+" além do que devia.)":""),"a");
+    };
+    c.querySelector("[data-no]").onclick=()=>{ c.classList.add("done"); c.querySelectorAll("input,button").forEach(x=>x.disabled=true); c.querySelector("[data-no]").textContent="Descartado"; };
+    chat.appendChild(c); chat.scrollTop=chat.scrollHeight;
+  }
+
+  function enviar(){
+    const caixa=$("#entrada"); const t=caixa.value.trim(); if(!t) return;
+    bolha(esc(t),"u"); caixa.value=""; caixa.style.height="auto";
+    const r=Interpretador.interpretar(t,{hoje:hoje(),clientes:clientes()});
+    if(r.tipo==="pergunta") bolha(responderPergunta(r),"a");
+    else if(r.tipo==="divida") cartaoDivida(r);
+    else if(r.tipo==="pagamento") cartaoPagamento(r);
+    else bolha("Não entendi. Tente assim:\n• “Pedro me deve 120 do suporte, vence sexta”\n• “A Ana pagou 50”\n• “Quem está me devendo?”","a",true);
+  }
+  $("#enviar").onclick=enviar;
+  $("#entrada").addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); enviar(); } });
+  $("#entrada").addEventListener("input",e=>{ e.target.style.height="auto"; e.target.style.height=Math.min(120,e.target.scrollHeight)+"px"; });
+  $("#chips").addEventListener("click",e=>{ const c=e.target.closest(".chip"); if(!c) return; $("#entrada").value=c.textContent; enviar(); });
+
+  // ---------- VOZ (reconhecimento do próprio navegador — grátis)
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  let rec=null, ouvindo=false, textoVoz="";
+  if(SR){
+    rec=new SR(); rec.lang="pt-BR"; rec.interimResults=true; rec.continuous=false; rec.maxAlternatives=1;
+    rec.onresult=e=>{ let fin="",tmp=""; for(let i=0;i<e.results.length;i++){ const r=e.results[i]; if(r.isFinal) fin+=r[0].transcript; else tmp+=r[0].transcript; } textoVoz=(fin||tmp).trim(); $("#entrada").value=textoVoz; $("#ouvindo").textContent="🎙️ "+textoVoz; };
+    rec.onend=()=>{ ouvindo=false; $("#mic").classList.remove("rec"); $("#ouvindo").textContent=""; if(textoVoz){ enviar(); textoVoz=""; } };
+    rec.onerror=e=>{ ouvindo=false; $("#mic").classList.remove("rec"); if(e.error==="not-allowed"||e.error==="service-not-allowed") bolha("Permita o uso do microfone para este app nas configurações do navegador.","a",true); else if(e.error==="no-speech") $("#ouvindo").textContent="Não ouvi nada. Toque e fale de novo."; else $("#ouvindo").textContent="Não consegui ouvir. Tente de novo ou use o 🎤 do teclado."; };
+  }
+  $("#mic").onclick=()=>{
+    if(!rec){ $("#entrada").focus(); bolha("Este navegador não tem reconhecimento de voz. Use o 🎤 do teclado: toque na caixa de texto e depois no microfone do teclado.","a"); return; }
+    if(ouvindo){ rec.stop(); return; }
+    textoVoz=""; try{ rec.start(); ouvindo=true; $("#mic").classList.add("rec"); $("#ouvindo").textContent="🎙️ Ouvindo… fale agora"; }catch(_){ }
+  };
+
+  // ---------- BACKUP
+  $("#btnExport").onclick=()=>{
+    const blob=new Blob([JSON.stringify({app:"cobrancas-3dfigures",versao:1,exportadoEm:new Date().toISOString(),itens},null,1)],{type:"application/json"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="backup-cobrancas-"+hoje()+".json"; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    try{ localStorage.setItem(KEY+"_bk",String(Date.now())); }catch(_){} render(); toast("Backup baixado.");
+  };
+  $("#fileImport").onchange=async e=>{
+    const f=e.target.files&&e.target.files[0]; if(!f) return;
+    try{ const d=JSON.parse(await f.text()); const lista=Array.isArray(d)?d:d.itens; if(!Array.isArray(lista)) throw 0;
+      const ids=new Set(itens.map(i=>i.id)); let n=0; for(const it of lista){ if(it&&it.id&&!ids.has(it.id)){ itens.push(it); n++; } }
+      salvar(); toast(n+" lançamento(s) restaurado(s)."); }catch(_){ toast("Arquivo de backup inválido."); }
+    e.target.value="";
+  };
+  $("#btnCsv").onclick=async()=>{
+    const cab=["Cliente","WhatsApp","Descrição","Data venda","Vencimento","Forma","Total","Recebido","Falta","Status","Obs"];
+    const linhas=itens.slice().sort((a,b)=>(a.vencimento||"").localeCompare(b.vencimento||"")).map(it=>[it.cliente,it.telefone,it.descricao,fmtData(it.dataVenda),fmtData(it.vencimento),it.forma,vir(it.valor),vir(it.recebido),vir(falta(it)),rotulo[status(it)],it.obs]);
+    const tsv=[cab,...linhas].map(l=>l.map(c=>String(c??"").replace(/[\t\n]/g," ")).join("\t")).join("\n");
+    try{ await navigator.clipboard.writeText(tsv); toast("Copiado! Cole no Excel ou Planilhas."); }catch(_){ toast("Não consegui copiar."); }
+  };
+  $("#btnTsv").onclick=()=>{
+    const txt=$("#tsv").value.trim(); if(!txt) return;
+    const brData=s=>{ const m=String(s||"").match(/(\d{2})\/(\d{2})\/(\d{4})/); return m?m[3]+"-"+m[2]+"-"+m[1]:""; };
+    let n=0;
+    for(const l of txt.split(/\r?\n/)){
+      const c=l.split("\t"); if(c.length<9||/^cliente$/i.test(c[0].trim())) continue;
+      const valor=num(c[6]), recebido=num(c[7]); if(!c[0].trim()||valor<=0) continue;
+      itens.push({id:novoId(),cliente:c[0].trim(),telefone:(c[1]||"").trim(),descricao:(c[2]||"").trim(),dataVenda:brData(c[3])||hoje(),vencimento:brData(c[4])||hoje(),forma:(c[5]||"Pix").trim(),valor,recebido,obs:(c[10]||"").trim(),pagamentos:recebido>0?[{valor:recebido,data:brData(c[3])||hoje()}]:[],criadoEm:new Date().toISOString()});
+      n++;
+    }
+    salvar(); $("#tsv").value=""; toast(n+" lançamento(s) importado(s).");
+  };
+
+  // ---------- instalação PWA
+  let promptInstal=null;
+  window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); promptInstal=e; $("#btnInstalar").style.display=""; });
+  $("#btnInstalar").onclick=async()=>{ if(!promptInstal) return; promptInstal.prompt(); await promptInstal.userChoice.catch(()=>{}); promptInstal=null; $("#btnInstalar").style.display="none"; };
+  if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+
+  render();
+  // atualiza ao voltar para o app (vira o dia, etc.)
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ carregar(); render(); } });
+})();
+</script>
+
+</body>
+</html>
