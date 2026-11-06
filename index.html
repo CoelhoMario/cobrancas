@@ -367,6 +367,7 @@ tr.clic{cursor:pointer}
       </div>
       <div class="row mt"><button class="primary" id="ghSalvar">Salvar e sincronizar</button><button id="ghAgora">🔄 Sincronizar agora</button><button class="ghost danger" id="ghDesligar">Desligar</button></div>
       <p class="desc mt" id="ghStatus"></p>
+      <p class="desc">Versão do app: <b>9</b></p>
     </div>
     <div class="card mt">
       <h2>PIN de acesso</h2>
@@ -971,7 +972,7 @@ tr.clic{cursor:pointer}
   function ico(t){ $("#syncIco").textContent=t||""; }
   function ghStatus(m){ $("#ghStatus").textContent=m||""; }
   function ghUI(){ $("#ghRepo").value=gh.repo||"CoelhoMario/cobrancas-dados"; $("#ghToken").value=gh.token?"••••••••••••":"";
-    ghStatus(!gh.token?"Desligado — os dados ficam só neste aparelho.":gh.ultimo?"✅ Sincronizado em "+new Date(gh.ultimo).toLocaleString("pt-BR")+".":"Configurado, aguardando primeira sincronização.");
+    ghStatus(!gh.token?"Desligado — os dados ficam só neste aparelho.":gh.ultimo?"✅ Sincronizado em "+new Date(gh.ultimo).toLocaleString("pt-BR")+(gh.nuvem?" · Nuvem: "+gh.nuvem.i+" lançamento(s) e "+gh.nuvem.a+" compromisso(s).":"."):"Configurado, aguardando primeira sincronização.");
     ico(gh.token?(gh.erro?"⚠️":"☁️"):""); }
   const b64e=s=>btoa(unescape(encodeURIComponent(s)));
   const b64d=s=>decodeURIComponent(escape(atob(String(s).replace(/\s/g,""))));
@@ -999,7 +1000,7 @@ tr.clic{cursor:pointer}
         try{ await ghApi("/contents/dados.json",{method:"PUT",body:JSON.stringify({message:"Sincroniza ("+new Date().toLocaleString("pt-BR")+")",content:b64e(corpo),sha})}); }
         catch(e){ if((e.status===409||e.status===422)&&!tentativa){ sincronizando=false; return sincronizar(true); } throw e; }
       }
-      gh.ultimo=Date.now(); gh.erro=""; try{ localStorage.setItem(GK,JSON.stringify(gh)); }catch(_){}
+      gh.nuvem={i:nI.length,a:nA.length}; gh.ultimo=Date.now(); gh.erro=""; try{ localStorage.setItem(GK,JSON.stringify(gh)); }catch(_){}
       ghUI();
     }catch(e){ gh.erro=e.message; ico("⚠️");
       ghStatus(e.status===401?"Token inválido ou expirado. Gere outro token.":e.status===403||e.status===404?"Sem permissão no repositório. Confira o nome e as permissões do token (Contents: leitura e escrita).":"Sem internet ou erro ("+e.message+"). Tento de novo depois."); }
