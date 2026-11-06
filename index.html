@@ -179,6 +179,9 @@ tr.clic{cursor:pointer}
 .ev.feito{opacity:.5}.ev.feito .tt{text-decoration:line-through}
 .ev .tt{font-weight:600}
 .ev .chk{width:22px;height:22px;flex:none;margin-top:1px}
+
+.ev.g .hr{color:var(--blue)}
+.gbadge{font-size:10px;font-weight:700;color:var(--blue);background:var(--bluebg);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle}
 </style>
 </head>
 <body>
@@ -255,10 +258,21 @@ tr.clic{cursor:pointer}
   </div>
 
   <div class="view" id="v-agenda">
-    <div class="card">
+    <div class="card gcard">
+      <div class="row" style="justify-content:space-between">
+        <div><b>Google Agenda</b><div class="desc" id="gStatus">Não conectado.</div></div>
+        <div class="row"><button class="sm primary" id="gSync">Conectar</button><button class="sm ghost" id="gCfgBtn">⚙️</button></div>
+      </div>
+      <div id="gCfg" style="display:none" class="mt">
+        <label>Client ID do Google<input id="gClientId" placeholder="xxxx.apps.googleusercontent.com" autocapitalize="off" autocomplete="off"></label>
+        <div class="row mt"><button class="sm primary" id="gSalvarCfg">Salvar</button><button class="sm ghost danger" id="gDesconectar">Desconectar</button></div>
+        <p class="desc mt">O Client ID é criado uma vez no Google Cloud (grátis). Peça o passo a passo ao Claude.</p>
+      </div>
+    </div>
+    <div class="card mt">
       <div class="calhead"><button class="sm" id="calPrev">‹</button><b id="calTit"></b><button class="sm" id="calNext">›</button></div>
       <div class="cal" id="cal"></div>
-      <div class="desc mt"><span class="dotl" style="background:var(--green)"></span> compromisso &nbsp; <span class="dotl" style="background:var(--amber)"></span> vencimento &nbsp; <span class="dotl" style="background:var(--red)"></span> atrasado</div>
+      <div class="desc mt"><span class="dotl" style="background:var(--green)"></span> compromisso &nbsp; <span class="dotl" style="background:var(--blue)"></span> Google &nbsp; <span class="dotl" style="background:var(--amber)"></span> vencimento &nbsp; <span class="dotl" style="background:var(--red)"></span> atrasado</div>
     </div>
     <div class="card mt">
       <div class="row" style="justify-content:space-between"><h2 style="margin:0" id="diaTit"></h2><button class="sm primary" id="btnNovoAg">+ Compromisso</button></div>
@@ -685,7 +699,7 @@ tr.clic{cursor:pointer}
   // ---------- AGENDA
   const AK=KEY+"_agenda";
   let agenda=[]; try{ const a=JSON.parse(localStorage.getItem(AK)||"[]"); agenda=Array.isArray(a)?a:[]; }catch(_){ agenda=[]; }
-  function salvarAg(){ try{ localStorage.setItem(AK,JSON.stringify(agenda)); }catch(_){ banner("Não consegui salvar a agenda neste aparelho."); } render(); renderAgenda(); try{ agendarSync(); }catch(_){} }
+  function salvarAg(){ try{ localStorage.setItem(AK,JSON.stringify(agenda)); }catch(_){ banner("Não consegui salvar a agenda neste aparelho."); } render(); renderAgenda(); try{ agendarSync(); }catch(_){} try{ agendarGoogle(); }catch(_){} }
   let calMes=hoje().slice(0,7), diaSel=hoje(), agId=null;
   const MESES_L=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
   const ordAg=(a,b)=>(a.data+(a.hora||"99")).localeCompare(b.data+(b.hora||"99"));
@@ -697,6 +711,8 @@ tr.clic{cursor:pointer}
     return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent(e.titulo+(e.cliente&&!e.titulo.includes(e.cliente.split(" ")[0])?" — "+e.cliente:""))+"&dates="+dates+"&ctz=America/Sao_Paulo&details="+encodeURIComponent(det);
   }
   function evHTML(e,comData){
+    if(e.google) return '<a class="item ev g" href="'+esc(e.link||"https://calendar.google.com")+'" target="_blank" rel="noopener" style="text-decoration:none;color:inherit"><span class="chk"></span><div class="hr">'+(e.hora||"—")+'</div><div style="flex:1;min-width:0"><div class="tt">'+esc(e.titulo)+'<span class="gbadge">Google</span></div>'+
+      '<div class="desc">'+(comData?fmtData(e.data)+" · "+DIAS[new Date(e.data+"T12:00:00").getDay()]:"")+'</div></div></a>';
     return '<div class="item ev'+(e.feito?" feito":"")+'" data-ag="'+esc(e.id)+'"><input type="checkbox" class="chk" data-feito="'+esc(e.id)+'"'+(e.feito?" checked":"")+'><div class="hr">'+(e.hora||"—")+'</div><div style="flex:1;min-width:0"><div class="tt">'+esc(e.titulo)+'</div>'+
       '<div class="desc">'+(comData?fmtData(e.data)+" · "+DIAS[new Date(e.data+"T12:00:00").getDay()]+(e.cliente?" · ":""):"")+(e.cliente?esc(e.cliente):"")+(e.obs?(e.cliente||comData?" · ":"")+esc(e.obs):"")+'</div></div></div>';
   }
@@ -709,24 +725,25 @@ tr.clic{cursor:pointer}
     for(let i=0;i<42;i++){ const dt=new Date(ini); dt.setDate(ini.getDate()+i); const ds=iso(dt);
       if(i>=35&&dt.getMonth()!==mo-1) break;
       const evs=agenda.filter(e=>e.data===ds&&!e.feito).length, vs=itens.filter(it=>falta(it)>0&&it.vencimento===ds);
-      const dots=(evs?'<i style="background:var(--green)"></i>':'')+(vs.length?'<i style="background:'+(ds<h?'var(--red)':'var(--amber)')+'"></i>':'');
+      const gs=gEvents.some(g=>g.data===ds);
+      const dots=(evs?'<i style="background:var(--green)"></i>':'')+(gs?'<i style="background:var(--blue)"></i>':'')+(vs.length?'<i style="background:'+(ds<h?'var(--red)':'var(--amber)')+'"></i>':'');
       html+='<button class="d'+(dt.getMonth()!==mo-1?" out":"")+(ds===h?" hj":"")+(ds===diaSel?" sel":"")+'" data-dia="'+ds+'">'+dt.getDate()+'<span class="ds">'+dots+'</span></button>';
     }
     $("#cal").innerHTML=html;
     const dd=new Date(diaSel+"T12:00:00");
     $("#diaTit").textContent=(diaSel===h?"Hoje, ":diaSel===addDias(h,1)?"Amanhã, ":DIAS[dd.getDay()]+", ")+dd.getDate()+" de "+MESES_L[dd.getMonth()];
-    const evs=agenda.filter(e=>e.data===diaSel).sort(ordAg), vs=itens.filter(it=>falta(it)>0&&it.vencimento===diaSel);
+    const evs=agTodos().filter(e=>e.data===diaSel).sort(ordAg), vs=itens.filter(it=>falta(it)>0&&it.vencimento===diaSel);
     $("#diaLista").innerHTML=(evs.map(e=>evHTML(e,false)).join("")+vs.map(vencHTML).join(""))||'<div class="empty">Nada neste dia.</div>';
-    const prox=agenda.filter(e=>!e.feito&&e.data>=h).sort(ordAg).slice(0,8);
+    const prox=agTodos().filter(e=>!e.feito&&e.data>=h).sort(ordAg).slice(0,8);
     $("#proxAg").innerHTML=prox.length?prox.map(e=>evHTML(e,true)).join(""):'<div class="empty">Nenhum compromisso marcado. Fale com o assessor: “agenda a entrega do Pedro sexta às 15h”.</div>';
-    const hj=agenda.filter(e=>e.data===h).sort(ordAg);
+    const hj=agTodos().filter(e=>e.data===h).sort(ordAg);
     $("#hojeAgQtd").textContent=hj.length?"· "+hj.filter(e=>!e.feito).length+" pendente(s)":"";
     $("#hojeAg").innerHTML=hj.length?'<div class="lista">'+hj.map(e=>evHTML(e,false)).join("")+'</div>':'<div class="desc">Nenhum compromisso hoje.</div>';
   }
   $("#cal").addEventListener("click",e=>{ const b=e.target.closest("[data-dia]"); if(!b) return; diaSel=b.dataset.dia; if(diaSel.slice(0,7)!==calMes) calMes=diaSel.slice(0,7); renderAgenda(); });
   const mudaMes=n=>{ const [y,m]=calMes.split("-").map(Number); const d=new Date(y,m-1+n,1,12); calMes=iso(d).slice(0,7); renderAgenda(); };
   $("#calPrev").onclick=()=>mudaMes(-1); $("#calNext").onclick=()=>mudaMes(1);
-  document.addEventListener("change",e=>{ const c=e.target.closest("[data-feito]"); if(!c) return; const ev=agenda.find(x=>x.id===c.dataset.feito); if(ev){ ev.feito=c.checked; salvarAg(); } });
+  document.addEventListener("change",e=>{ const c=e.target.closest("[data-feito]"); if(!c) return; const ev=agenda.find(x=>x.id===c.dataset.feito); if(ev){ ev.feito=c.checked; ev.gDirty=true; salvarAg(); } });
   document.addEventListener("click",e=>{ if(e.target.closest("[data-feito],a,button,input,select,textarea,label")) return; const el=e.target.closest("[data-ag]"); if(el) abrirAg(el.dataset.ag); });
   function abrirAg(id,novo){
     const ev=id?agenda.find(x=>x.id===id):Object.assign({titulo:"",cliente:"",data:diaSel,hora:"",obs:"",feito:false},novo||{});
@@ -739,10 +756,95 @@ tr.clic{cursor:pointer}
   function atualizaG(){ $("#aGoogle").href=gcalLink(lerAg()); }
   ["#aTitulo","#aCliente","#aData","#aHora","#aObs"].forEach(s=>$(s).addEventListener("input",atualizaG));
   $("#btnNovoAg").onclick=()=>abrirAg(null);
-  $("#aSalvar").onclick=()=>{ const d=lerAg(); if(agId){ Object.assign(agenda.find(x=>x.id===agId)||{},d); } else agenda.push({id:novoId(),...d,criadoEm:new Date().toISOString()}); diaSel=d.data; calMes=d.data.slice(0,7); salvarAg(); $("#mAg").classList.remove("open"); toast("Compromisso salvo."); };
+  $("#aSalvar").onclick=()=>{ const d=lerAg(); d.gDirty=true; if(agId){ Object.assign(agenda.find(x=>x.id===agId)||{},d); } else agenda.push({id:novoId(),...d,criadoEm:new Date().toISOString()}); diaSel=d.data; calMes=d.data.slice(0,7); salvarAg(); $("#mAg").classList.remove("open"); toast("Compromisso salvo."); };
   $("#aExcluir").onclick=()=>{ if($("#aExcluir").dataset.ok!=="1"){ $("#aExcluir").dataset.ok="1"; $("#aExcluir").textContent="Toque de novo"; setTimeout(()=>{ $("#aExcluir").dataset.ok=""; $("#aExcluir").textContent="Excluir"; },2500); return; }
+    { const ex=agenda.find(x=>x.id===agId); if(ex&&ex.gid) gDel.push(ex.gid); }
     agenda=agenda.filter(x=>x.id!==agId); $("#aExcluir").dataset.ok=""; $("#aExcluir").textContent="Excluir"; salvarAg(); $("#mAg").classList.remove("open"); toast("Compromisso excluído."); };
 
+
+  // ---------- GOOGLE AGENDA (API oficial, grátis)
+  const GGK=KEY+"_google";
+  let gcfg={}, gEvents=[], gDel=[], gToken=null, gTokenExp=0, gTokenClient=null, gSyncing=false, gTimer=null, gPend=false;
+  try{ gcfg=JSON.parse(localStorage.getItem(GGK)||"{}")||{}; gEvents=Array.isArray(gcfg.cache)?gcfg.cache:[]; gDel=Array.isArray(gcfg.del)?gcfg.del:[]; if(gcfg.tk&&gcfg.exp>Date.now()+60000){ gToken=gcfg.tk; gTokenExp=gcfg.exp; } }catch(_){}
+  function gSave(){ gcfg.cache=gEvents; gcfg.del=gDel; gcfg.tk=gToken; gcfg.exp=gTokenExp; try{ localStorage.setItem(GGK,JSON.stringify(gcfg)); }catch(_){} }
+  function agTodos(){ return agenda.concat(gEvents.map(g=>({...g,id:"g_"+g.gid,google:true}))); }
+  function gStatus(m){ $("#gStatus").textContent=m; }
+  function gUI(){ $("#gClientId").value=gcfg.clientId||""; $("#gSync").textContent=gcfg.conectado?"🔄 Sincronizar":"Conectar";
+    gStatus(!gcfg.clientId?"Configure o Client ID (⚙️) para conectar.":!gcfg.conectado?"Pronto para conectar.":gcfg.ultimo?"Sincronizado em "+new Date(gcfg.ultimo).toLocaleString("pt-BR")+".":"Conectado."); }
+  $("#gCfgBtn").onclick=()=>{ const c=$("#gCfg"); c.style.display=c.style.display==="none"?"":"none"; };
+  $("#gSalvarCfg").onclick=()=>{ const v=$("#gClientId").value.trim(); if(!/\.apps\.googleusercontent\.com$/.test(v)){ toast("Client ID inválido."); return; } if(v!==gcfg.clientId){ gTokenClient=null; gToken=null; } gcfg.clientId=v; gSave(); gUI(); $("#gCfg").style.display="none"; toast("Client ID salvo. Toque em Conectar."); };
+  $("#gDesconectar").onclick=()=>{ try{ if(gToken&&window.google) google.accounts.oauth2.revoke(gToken,()=>{}); }catch(_){} gcfg={clientId:gcfg.clientId}; gEvents=[]; gDel=[]; gToken=null; gTokenExp=0; agenda.forEach(e=>{ delete e.gid; e.gDirty=true; }); gSave(); try{ localStorage.setItem(AK,JSON.stringify(agenda)); }catch(_){} gUI(); renderAgenda(); toast("Google Agenda desconectado."); };
+  function carregaGIS(){ return new Promise((ok,erro)=>{ if(window.google&&google.accounts&&google.accounts.oauth2) return ok(); const sc=document.createElement("script"); sc.src="https://accounts.google.com/gsi/client"; sc.async=true; sc.onload=()=>ok(); sc.onerror=()=>erro(new Error("Sem internet para falar com o Google.")); document.head.appendChild(sc); }); }
+  async function pegaToken(interativo){
+    if(gToken&&gTokenExp>Date.now()+60000) return gToken;
+    if(!interativo) return null;
+    if(!gcfg.clientId) throw new Error("Configure o Client ID (⚙️).");
+    await carregaGIS();
+    return new Promise((ok,erro)=>{
+      gTokenClient=google.accounts.oauth2.initTokenClient({client_id:gcfg.clientId,scope:"https://www.googleapis.com/auth/calendar.events",
+        callback:r=>{ if(r.error) return erro(new Error(r.error==="access_denied"?"Acesso negado no Google.":r.error)); gToken=r.access_token; gTokenExp=Date.now()+(Number(r.expires_in)||3600)*1000; gcfg.conectado=true; gSave(); ok(gToken); },
+        error_callback:e=>erro(new Error(e&&e.type==="popup_closed"?"Janela do Google fechada.":"Não consegui abrir o login do Google."))});
+      gTokenClient.requestAccessToken({prompt:gcfg.conectado?"":"consent"});
+    });
+  }
+  async function gApi(path,opt){
+    const r=await fetch("https://www.googleapis.com/calendar/v3/calendars/primary"+path,Object.assign({},opt||{},{headers:{"Authorization":"Bearer "+gToken,"Content-Type":"application/json"}}));
+    if(r.status===401){ gToken=null; gTokenExp=0; gSave(); throw Object.assign(new Error("Sessão do Google expirou. Toque em Sincronizar."),{status:401}); }
+    if(r.status===204||r.status===404||r.status===410) return null;
+    if(!r.ok){ let m=""; try{ m=(await r.json()).error.message; }catch(_){} throw new Error(m||("HTTP "+r.status)); }
+    return r.json();
+  }
+  function fimHora(data,hora){ let [h,m]=hora.split(":").map(Number); h+=1; let d=data; if(h>=24){ h-=24; d=addDias(data,1); } return d+"T"+String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":00"; }
+  function corpoG(e){
+    const nome=e.titulo+(e.cliente&&!e.titulo.includes(e.cliente.split(" ")[0])?" — "+e.cliente:"");
+    const b={summary:(e.feito?"✓ ":"")+nome, description:[e.cliente?"Cliente: "+e.cliente:"",e.obs||"","(criado no app Cobranças)"].filter(Boolean).join("\n"),
+      extendedProperties:{private:{app:"cobrancas",appId:e.id}}};
+    if(e.hora){ b.start={dateTime:e.data+"T"+e.hora+":00",timeZone:"America/Sao_Paulo"}; b.end={dateTime:fimHora(e.data,e.hora),timeZone:"America/Sao_Paulo"}; }
+    else { b.start={date:e.data}; b.end={date:addDias(e.data,1)}; }
+    return b;
+  }
+  function lerG(g){
+    let data,hora="";
+    if(g.start&&g.start.date) data=g.start.date;
+    else if(g.start&&g.start.dateTime){ const d=new Date(g.start.dateTime); data=iso(d); hora=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+    return {gid:g.id,titulo:(g.summary||"(sem título)").replace(/^✓\s*/,""),feito:/^✓/.test(g.summary||""),data,hora,link:g.htmlLink,updated:g.updated};
+  }
+  async function syncGoogle(interativo){
+    if(!gcfg.clientId){ if(interativo){ $("#gCfg").style.display=""; toast("Primeiro configure o Client ID."); } return; }
+    if(gSyncing){ gPend=true; return; } gSyncing=true; $("#gSync").disabled=true; gStatus("Sincronizando com o Google…");
+    try{
+      const tk=await pegaToken(interativo); if(!tk){ gStatus("Toque em 🔄 Sincronizar para atualizar com o Google."); return; }
+      // 1) exclusões feitas no app
+      for(const gid of gDel.slice()){ await gApi("/events/"+encodeURIComponent(gid),{method:"DELETE"}); gDel=gDel.filter(x=>x!==gid); }
+      // 2) traz o que está no Google
+      const ini=new Date(); ini.setDate(ini.getDate()-60); const fim=new Date(); fim.setDate(fim.getDate()+365);
+      let lista=[], page="";
+      do{ const r=await gApi("/events?singleEvents=true&orderBy=startTime&maxResults=2500&timeMin="+encodeURIComponent(ini.toISOString())+"&timeMax="+encodeURIComponent(fim.toISOString())+(page?"&pageToken="+page:""));
+        lista=lista.concat((r&&r.items)||[]); page=r&&r.nextPageToken||""; }while(page);
+      const doApp=new Map(), externos=[];
+      for(const g of lista){ if(g.status==="cancelled") continue; const pid=g.extendedProperties&&g.extendedProperties.private&&g.extendedProperties.private.appId; if(pid) doApp.set(pid,g); else externos.push(lerG(g)); }
+      // 3) compromissos do app: atualiza a partir do Google (se mudou lá) ou envia para o Google
+      const iniS=iso(ini), fimS=iso(fim);
+      for(const e of agenda.slice()){
+        const g=doApp.get(e.id);
+        if(g&&!e.gDirty&&e.gUpdated&&g.updated>e.gUpdated){ const x=lerG(g); e.data=x.data; e.hora=x.hora; e.feito=x.feito; e.titulo=x.titulo.replace(e.cliente?" — "+e.cliente:"\u0000",""); e.gid=g.id; e.gUpdated=g.updated; continue; }
+        if(!g&&e.gid&&!e.gDirty&&e.data>=iniS&&e.data<=fimS){ agenda=agenda.filter(x=>x!==e); continue; } // apagado no Google
+        if(!g||e.gDirty){
+          const r=g?await gApi("/events/"+encodeURIComponent(g.id),{method:"PATCH",body:JSON.stringify(corpoG(e))}):await gApi("/events",{method:"POST",body:JSON.stringify(corpoG(e))});
+          if(r){ e.gid=r.id; e.gUpdated=r.updated; } e.gDirty=false;
+        }
+      }
+      gEvents=externos; gcfg.ultimo=Date.now(); gSave();
+      try{ localStorage.setItem(AK,JSON.stringify(agenda)); }catch(_){}
+      renderAgenda(); gUI();
+      if(interativo) toast("Google Agenda sincronizado.");
+    }catch(e){ gStatus(e.message||"Erro ao sincronizar."); }
+    finally{ gSyncing=false; $("#gSync").disabled=false; if(gPend){ gPend=false; agendarGoogle(); } }
+  }
+  function agendarGoogle(){ if(!gcfg.conectado) return; clearTimeout(gTimer); gTimer=setTimeout(()=>syncGoogle(false),2500); }
+  $("#gSync").onclick=()=>syncGoogle(true);
+  gUI();
+  if(gcfg.conectado&&gToken) setTimeout(()=>syncGoogle(false),1500);
   function cartaoAgenda(r){
     const c=document.createElement("div"); c.className="acao col";
     c.innerHTML='<div class="t"><b>Novo compromisso</b> — confira e confirme:</div>'+
@@ -754,7 +856,7 @@ tr.clic{cursor:pointer}
       '<div class="row"><button class="sm primary" data-ok>Agendar</button><button class="sm ghost" data-no>Descartar</button></div>';
     const g=k=>c.querySelector('[data-k="'+k+'"]').value;
     c.querySelector("[data-ok]").onclick=()=>{
-      const ev={id:novoId(),titulo:g("titulo").trim()||"Compromisso",cliente:g("cliente").trim(),data:validData(g("data"))?g("data"):hoje(),hora:g("hora")||"",obs:"",feito:false,criadoEm:new Date().toISOString()};
+      const ev={id:novoId(),titulo:g("titulo").trim()||"Compromisso",cliente:g("cliente").trim(),data:validData(g("data"))?g("data"):hoje(),hora:g("hora")||"",obs:"",feito:false,gDirty:true,criadoEm:new Date().toISOString()};
       agenda.push(ev); diaSel=ev.data; calMes=ev.data.slice(0,7); salvarAg();
       c.querySelectorAll("input,button").forEach(x=>x.disabled=true); c.querySelector("[data-ok]").textContent="Agendado ✓"; c.querySelector("[data-no]").remove();
       const row=c.querySelector(".row");
@@ -767,10 +869,10 @@ tr.clic{cursor:pointer}
   function responderAgenda(r){
     const h=hoje();
     const lin=e=>"• "+(e.hora||"dia todo")+" — "+esc(e.titulo)+(e.cliente&&!e.titulo.includes(e.cliente.split(" ")[0])?" ("+esc(e.cliente)+")":"")+(e.feito?" ✓":"");
-    if(r.sobre==="agenda_semana"){ const l=agenda.filter(e=>e.data>=h&&e.data<=addDias(h,7)&&!e.feito).sort(ordAg);
+    if(r.sobre==="agenda_semana"){ const l=agTodos().filter(e=>e.data>=h&&e.data<=addDias(h,7)&&!e.feito).sort(ordAg);
       if(!l.length) return "Nada na agenda nos próximos 7 dias.";
       let out="<b>Próximos 7 dias:</b>", ult=""; for(const e of l){ if(e.data!==ult){ ult=e.data; out+="\n<b>"+DIAS[new Date(e.data+"T12:00:00").getDay()]+" "+fmtData(e.data).slice(0,5)+"</b>"; } out+="\n"+lin(e); } return out; }
-    const d=r.data||h, l=agenda.filter(e=>e.data===d).sort(ordAg), vs=itens.filter(it=>falta(it)>0&&it.vencimento===d);
+    const d=r.data||h, l=agTodos().filter(e=>e.data===d).sort(ordAg), vs=itens.filter(it=>falta(it)>0&&it.vencimento===d);
     const nome=d===h?"Hoje":d===addDias(h,1)?"Amanhã":DIAS[new Date(d+"T12:00:00").getDay()]+" "+fmtData(d).slice(0,5);
     if(!l.length&&!vs.length) return nome+" você não tem nada marcado.";
     return "<b>"+nome+":</b>"+(l.length?"\n"+l.map(lin).join("\n"):"\nNenhum compromisso.")+(vs.length?"\n\n💰 Vencem: "+vs.map(i=>esc(i.cliente)+" "+brl(falta(i))).join(", "):"");
@@ -924,7 +1026,7 @@ tr.clic{cursor:pointer}
   travar();
   render(); renderAgenda();
   // atualiza ao voltar para o app (vira o dia, etc.)
-  document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ carregar(); render(); renderAgenda(); if(gh.token&&(!gh.ultimo||Date.now()-gh.ultimo>3600e3)) sincronizar(); } });
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ carregar(); render(); renderAgenda(); if(gh.token&&(!gh.ultimo||Date.now()-gh.ultimo>3600e3)) sincronizar(); if(gcfg.conectado&&gToken&&gTokenExp>Date.now()) agendarGoogle(); } });
 })();
 </script>
 
