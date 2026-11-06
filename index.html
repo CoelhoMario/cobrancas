@@ -367,7 +367,7 @@ tr.clic{cursor:pointer}
       </div>
       <div class="row mt"><button class="primary" id="ghSalvar">Salvar e sincronizar</button><button id="ghAgora">🔄 Sincronizar agora</button><button class="ghost danger" id="ghDesligar">Desligar</button></div>
       <p class="desc mt" id="ghStatus"></p>
-      <p class="desc">Versão do app: <b>10</b></p>
+      <p class="desc">Versão do app: <b>11</b></p>
     </div>
     <div class="card mt">
       <h2>PIN de acesso</h2>
@@ -976,15 +976,26 @@ tr.clic{cursor:pointer}
     ico(gh.token?(gh.erro?"⚠️":"☁️"):""); }
   const b64e=s=>btoa(unescape(encodeURIComponent(s)));
   const b64d=s=>decodeURIComponent(escape(atob(String(s).replace(/\s/g,""))));
-  async function ghApi(path,opt){ const r=await fetch("https://api.github.com/repos/"+gh.repo+path+(path.includes("?")?"&":"?")+"t="+Date.now(),Object.assign({cache:"no-store",headers:{"Authorization":"Bearer "+gh.token,"Accept":"application/vnd.github+json"}},opt||{}));
-    if(!r.ok&&r.status!==404){ let msg=""; try{ msg=(await r.json()).message||""; }catch(_){} const e=new Error(msg||("HTTP "+r.status)); e.status=r.status; throw e; } return r; }
+  async function ghApi(path,opt,allow404){ let r;
+    try{ r=await fetch("https://api.github.com/repos/"+gh.repo+path+(path.includes("?")?"&":"?")+"t="+Date.now(),Object.assign({cache:"no-store",headers:{"Authorization":"Bearer "+gh.token,"Accept":"application/vnd.github+json"}},opt||{})); }
+    catch(_){ throw Object.assign(new Error("sem conexão com o GitHub"),{status:0}); }
+    if(r.ok||(allow404&&r.status===404)) return r;
+    let msg=""; try{ msg=(await r.json()).message||""; }catch(_){} throw Object.assign(new Error(msg||("HTTP "+r.status)),{status:r.status}); }
+  async function verificarRepo(){
+    let r; try{ r=await ghApi("",null,true); }catch(e){ if(e.status===401) throw e; throw e; }
+    if(r.status===404) throw Object.assign(new Error("Não encontrei o repositório “"+gh.repo+"” com este token. Confira o nome e se o token foi criado com acesso a ele."),{status:404,amigavel:true});
+    const j=await r.json();
+    if(j.permissions&&j.permissions.push===false) throw Object.assign(new Error("O token só tem permissão de leitura. Gere um token com “Contents: Read and write”."),{status:403,amigavel:true});
+    gh.verificado=gh.repo+"|"+gh.token.slice(-6);
+  }
   async function sincronizar(tentativa){
     if(!gh.token||!gh.repo) return;
     if(sincronizando){ pendente=true; return; }
     sincronizando=true; ico("🔄");
     try{
       try{ window.__carimbarItens(); window.__carimbarAgenda(); }catch(_){}
-      const g=await ghApi("/contents/dados.json"); let sha, rem={itens:[],agenda:[],excluidos:{}};
+      if(gh.verificado!==gh.repo+"|"+gh.token.slice(-6)) await verificarRepo();
+      const g=await ghApi("/contents/dados.json",null,true); let sha, rem={itens:[],agenda:[],excluidos:{}};
       if(g.status!==404){ const j=await g.json(); sha=j.sha; try{ rem=JSON.parse(b64d(j.content||"")); }catch(_){ rem={itens:[],agenda:[],excluidos:{}}; } }
       const remI=Array.isArray(rem.itens)?rem.itens:[], remA=Array.isArray(rem.agenda)?rem.agenda:[], remE=rem.excluidos||{};
       const ex={...remE}; for(const [k,v] of Object.entries(excl)) if(!ex[k]||v>ex[k]) ex[k]=v;
@@ -1003,7 +1014,7 @@ tr.clic{cursor:pointer}
       gh.nuvem={i:nI.length,a:nA.length}; gh.ultimo=Date.now(); gh.erro=""; try{ localStorage.setItem(GK,JSON.stringify(gh)); }catch(_){}
       ghUI();
     }catch(e){ gh.erro=e.message; ico("⚠️");
-      ghStatus(e.status===401?"Token inválido ou expirado. Gere outro token.":e.status===403||e.status===404?"Sem permissão no repositório. Confira o nome e as permissões do token (Contents: leitura e escrita).":"Erro: "+e.message+(e.status?" (código "+e.status+")":"")+". Tento de novo depois."); if(window.__syncManual) toast("Não sincronizou: "+e.message); }
+      ghStatus(e.amigavel?"❌ "+e.message:e.status===401?"❌ Token inválido ou expirado. Gere outro token.":e.status===403||e.status===404?"❌ O GitHub recusou gravar no repositório (código "+e.status+"). O token precisa de “Contents: Read and write” no repositório "+gh.repo+".":"Erro: "+e.message+(e.status?" (código "+e.status+")":"")+". Tento de novo depois."); if(window.__syncManual||window.__syncSalvar) toast("Não sincronizou — veja a mensagem em Backup."); gh.verificado=""; try{ localStorage.setItem(GK,JSON.stringify(gh)); }catch(_){} }
     finally{ sincronizando=false; if(pendente){ pendente=false; agendarSync(); } }
   }
   function agendarSync(){ if(!gh.token) return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>sincronizar(),3000); }
@@ -1014,7 +1025,7 @@ tr.clic{cursor:pointer}
     gh.repo=repo; if(tk&&!/^•+$/.test(tk)) gh.token=tk;
     if(!gh.token){ toast("Cole o token do GitHub."); return; }
     try{ localStorage.setItem(GK,JSON.stringify(gh)); }catch(_){}
-    ghUI(); ghStatus("Sincronizando…"); await sincronizar(); if(!gh.erro) toast("Sincronizado!");
+    gh.verificado=""; ghUI(); ghStatus("Sincronizando…"); window.__syncSalvar=true; await sincronizar(); window.__syncSalvar=false; if(!gh.erro) toast("Sincronizado!");
   };
   $("#ghAgora").onclick=async()=>{ if(!gh.token){ toast("Configure o token primeiro."); return; } ghStatus("Sincronizando…"); window.__syncManual=true; await sincronizar(); window.__syncManual=false; if(!gh.erro) toast("Sincronizado!"); };
   $("#ghDesligar").onclick=()=>{ gh={}; try{ localStorage.removeItem(GK); }catch(_){} ghUI(); toast("Sincronização desligada neste aparelho."); };
