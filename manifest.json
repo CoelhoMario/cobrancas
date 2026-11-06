@@ -2,14 +2,36 @@
   "name": "Cobranças 3D Figures",
   "short_name": "Cobranças",
   "description": "Contas a receber da 3D Figures Jlle Printer",
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "/cobrancas/index.html",
+  "scope": "/cobrancas/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
   "lang": "pt-BR",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
-  ]
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "/cobrancas/",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait"
 }
