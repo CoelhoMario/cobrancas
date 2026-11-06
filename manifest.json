@@ -2,8 +2,8 @@
   "name": "Cobranças 3D Figures",
   "short_name": "Cobranças",
   "description": "Contas a receber da 3D Figures Jlle Printer",
-  "start_url": "/cobrancas/index.html",
-  "scope": "/cobrancas/",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
@@ -28,7 +28,7 @@
       "purpose": "maskable"
     }
   ],
-  "id": "/cobrancas/",
+  "id": "./",
   "display_override": [
     "standalone",
     "minimal-ui"

@@ -133,9 +133,37 @@ details[open] summary::before{content:"– "}
 .msg b{color:var(--green)}
 body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
 @media (max-width:640px){.tabs{width:100%;overflow-x:auto}.tabs button{padding:7px 10px;font-size:13px;white-space:nowrap}.chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.chip{white-space:nowrap}.kpi .v{font-size:22px}th,td{padding:8px 5px}}
+
+#lock{position:fixed;inset:0;background:#000;z-index:100;display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:16px}
+#lock.on{display:flex}
+#lock h2{margin:0;font-size:20px}
+#lock p{margin:0;color:var(--muted);text-align:center;max-width:300px}
+.pins{display:flex;gap:14px;margin:6px 0}
+.pins span{width:16px;height:16px;border-radius:50%;border:2px solid var(--muted)}
+.pins span.f{background:var(--green);border-color:var(--green)}
+.pins.err span{border-color:var(--red);animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:12px}
+.pad button{height:72px;border-radius:50%;font-size:24px;font-weight:600;background:var(--card2)}
+.pad button.blank{visibility:hidden}
+#lockEsqueci{background:transparent;border:0;color:var(--muted);font-size:13px;text-decoration:underline}
+body.travado .wrap{filter:blur(12px)}
 </style>
 </head>
 <body>
+<div id="lock">
+  <div class="avatar" style="width:56px;height:56px;font-size:26px">$</div>
+  <h2 id="lockTit">Digite seu PIN</h2>
+  <p id="lockMsg"></p>
+  <div class="pins" id="pins"><span></span><span></span><span></span><span></span></div>
+  <div class="pad" id="pad">
+    <button>1</button><button>2</button><button>3</button>
+    <button>4</button><button>5</button><button>6</button>
+    <button>7</button><button>8</button><button>9</button>
+    <button class="blank"></button><button>0</button><button data-k="del">⌫</button>
+  </div>
+  <button id="lockEsqueci" type="button">Esqueci o PIN</button>
+</div>
 <div class="wrap">
   <header>
     <div>
@@ -272,6 +300,11 @@ body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bot
       <p class="desc">No organizador antigo, toque em <b>Copiar planilha</b> e cole aqui.</p>
       <textarea id="tsv" rows="5" style="width:100%;margin-top:8px" placeholder="Cole aqui…"></textarea>
       <div class="row mt"><button id="btnTsv">Importar</button></div>
+    </div>
+    <div class="card mt">
+      <h2>PIN de acesso</h2>
+      <p class="desc">O app pede o PIN ao abrir e quando fica mais de 2 minutos em segundo plano.</p>
+      <div class="row mt"><button id="btnTrocaPin">Trocar PIN</button><button id="btnTravar">Travar agora</button></div>
     </div>
     <div class="card mt">
       <h2>Instalar no celular</h2>
@@ -605,6 +638,38 @@ body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bot
   $("#btnInstalar").onclick=async()=>{ if(!promptInstal) return; promptInstal.prompt(); await promptInstal.userChoice.catch(()=>{}); promptInstal=null; $("#btnInstalar").style.display="none"; };
   if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 
+
+  // ---------- PIN
+  const PK=KEY+"_pin";
+  let modo="entrar", digitado="", primeiro="", saiuEm=0;
+  async function hashPin(p){ const sal=localStorage.getItem(PK+"_sal")||(()=>{ const x=Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem(PK+"_sal",x); return x; })();
+    const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(sal+":"+p)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+  function pinsUI(){ document.querySelectorAll("#pins span").forEach((e,i)=>e.classList.toggle("f",i<digitado.length)); }
+  function travar(m){ modo=m||(localStorage.getItem(PK)?"entrar":"criar"); digitado=""; primeiro=""; pinsUI();
+    $("#lockTit").textContent=modo==="criar"?"Crie um PIN de 4 dígitos":modo==="novo"?"Digite o novo PIN":"Digite seu PIN";
+    $("#lockMsg").textContent=modo==="criar"?"Ele protege seus lançamentos neste celular.":"";
+    $("#lockEsqueci").style.display=modo==="entrar"?"":"none";
+    $("#lock").classList.add("on"); document.body.classList.add("travado"); }
+  function destravar(){ $("#lock").classList.remove("on"); document.body.classList.remove("travado"); }
+  function erro(msg){ const p=$("#pins"); p.classList.add("err"); $("#lockMsg").textContent=msg; setTimeout(()=>{ p.classList.remove("err"); digitado=""; pinsUI(); },350); }
+  async function completo(){
+    if(modo==="entrar"){ if(await hashPin(digitado)===localStorage.getItem(PK)) destravar(); else erro("PIN incorreto."); return; }
+    if(!primeiro){ primeiro=digitado; digitado=""; pinsUI(); $("#lockTit").textContent="Confirme o PIN"; $("#lockMsg").textContent=""; return; }
+    if(primeiro!==digitado){ primeiro=""; $("#lockTit").textContent=modo==="criar"?"Crie um PIN de 4 dígitos":"Digite o novo PIN"; erro("Os PINs não conferem. Tente de novo."); return; }
+    try{ localStorage.setItem(PK,await hashPin(digitado)); }catch(_){}
+    destravar(); toast(modo==="criar"?"PIN criado.":"PIN trocado.");
+  }
+  $("#pad").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b||b.classList.contains("blank")) return;
+    if(b.dataset.k==="del"){ digitado=digitado.slice(0,-1); pinsUI(); return; }
+    if(digitado.length>=4) return; digitado+=b.textContent; pinsUI(); if(digitado.length===4) setTimeout(completo,120); });
+  document.addEventListener("keydown",e=>{ if(!$("#lock").classList.contains("on")) return; if(/^\d$/.test(e.key)&&digitado.length<4){ digitado+=e.key; pinsUI(); if(digitado.length===4) setTimeout(completo,120); } else if(e.key==="Backspace"){ digitado=digitado.slice(0,-1); pinsUI(); } });
+  $("#lockEsqueci").onclick=()=>{ $("#lockMsg").innerHTML='Sem o PIN não dá para abrir. Para recomeçar, todos os lançamentos deste celular serão apagados (você pode restaurar um backup depois). <br><br><button id="apagarTudo" style="background:var(--red);border-color:var(--red);color:#1a0505">Apagar tudo e criar novo PIN</button>';
+    $("#apagarTudo").onclick=()=>{ if($("#apagarTudo").dataset.ok!=="1"){ $("#apagarTudo").dataset.ok="1"; $("#apagarTudo").textContent="Toque de novo para confirmar"; return; }
+      itens=[]; try{ localStorage.removeItem(KEY); localStorage.removeItem(PK); localStorage.removeItem(PK+"_sal"); }catch(_){} render(); travar("criar"); }; };
+  $("#btnTrocaPin").onclick=()=>travar("novo");
+  $("#btnTravar").onclick=()=>travar("entrar");
+  document.addEventListener("visibilitychange",()=>{ if(document.hidden) saiuEm=Date.now(); else if(saiuEm&&Date.now()-saiuEm>120000&&localStorage.getItem(PK)) travar("entrar"); });
+  travar();
   render();
   // atualiza ao voltar para o app (vira o dia, etc.)
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ carregar(); render(); } });
