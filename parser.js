@@ -112,6 +112,57 @@
 
   function telefone(original) { const m = original.match(/(?:\(?\d{2}\)?\s*)?9?\d{4}[-\s]?\d{4}/); if (!m) return ""; const d = m[0].replace(/\D/g, ""); return d.length >= 10 ? m[0].trim() : ""; }
 
+
+  // ---------- AGENDA
+  function acharHora(t) {
+    let m;
+    if ((m = t.match(/\b(?:as |a |por volta das |umas )?(\d{1,2})\s*(?:h|:|horas?)\s*(\d{2})?\b(?:\s*(?:da|de) (manha|tarde|noite))?/))) {
+      let h = +m[1], mi = m[2] ? +m[2] : 0;
+      if (m[3] && (m[3] === "tarde" || m[3] === "noite") && h < 12) h += 12;
+      if (h <= 23 && mi <= 59) return { hora: String(h).padStart(2, "0") + ":" + String(mi).padStart(2, "0"), ini: m.index, fim: m.index + m[0].length };
+    }
+    if ((m = t.match(/\bas (\d{1,2})(?:\s*(?:da|de) (manha|tarde|noite))?\b/))) {
+      let h = +m[1]; if (m[2] && m[2] !== "manha" && h < 12) h += 12; else if (!m[2] && h >= 1 && h <= 6) h += 12;
+      if (h <= 23) return { hora: String(h).padStart(2, "0") + ":00", ini: m.index, fim: m.index + m[0].length };
+    }
+    if ((m = t.match(/\b(meio[- ]dia)\b/))) return { hora: "12:00", ini: m.index, fim: m.index + m[0].length };
+    if ((m = t.match(/\b(?:de |pela |a |na )?(manha|tarde|noite)\b/))) return { hora: { manha: "09:00", tarde: "14:00", noite: "19:00" }[m[1]], ini: m.index, fim: m.index + m[0].length, aprox: true };
+    return null;
+  }
+  const RE_AGENDA_FORTE = /\b(agenda|agendar|agende|agendo|marca|marcar|marque|lembra|lembrar|lembre|lembrete|compromisso|reuniao|visita|anota na agenda|coloca na agenda|bota na agenda)\b/;
+  const RE_AGENDA_FRACO = /\b(entrega|entregar|buscar|retirar|retirada|instalar|instalacao|medir|orcamento|ligar para|ligar pro|ligar pra|mandar|enviar|imprimir|terminar|finalizar|postar)\b/;
+  function interpretarAgenda(original, t, origAlinhado, ctx) {
+    const forte = RE_AGENDA_FORTE.test(t);
+    const temDinheiro = /(\d+[.,]?\d*)\s*(reais|real|conto|pila)|r\$|\bdeve\b|\bdevendo\b|\bpagou\b|\bpaguei\b|\bvence\b|\bfiado\b/.test(t);
+    const h = acharHora(t), d = acharData(t, ctx.hoje);
+    if (!forte && !(RE_AGENDA_FRACO.test(t) && (h || d) && !temDinheiro)) return null;
+    // tira data/hora e verbos de comando para formar o título
+    let tt = t, oo = origAlinhado;
+    const cortes = [h, d].filter(Boolean).sort((a, b) => b.ini - a.ini);
+    for (const c of cortes) { tt = tt.slice(0, c.ini) + " ".repeat(c.fim - c.ini) + tt.slice(c.fim); oo = oo.slice(0, c.ini) + " ".repeat(c.fim - c.ini) + oo.slice(c.fim); }
+    const pre = tt.match(/^\s*(?:(?:por favor|claude|assessor|ei|oi)[, ]+)*(?:(?:me )?(?:agenda|agendar|agende|marca|marcar|marque|anota na agenda|coloca na agenda|bota na agenda|anota|lembra|lembrar|lembre)(?:-me)?(?: de| que| para| pra| uma| um| a| o)*\s+|lembrete(?: de| para| pra)?\s+|tenho (?:que |de )?|preciso (?:que |de )?)/);
+    let ini = pre ? pre[0].length : 0;
+    let titulo = oo.slice(ini).replace(/\s+/g, " ").replace(/\s+(na|no|nessa|nesse|para|pra|pro|ate|as|a|de|do|da|em)\s*[,.!]?\s*$/i, "").replace(/^[,.\s]+|[,.\s]+$/g, "").trim();
+    titulo = titulo.replace(/\s+(na|no|para|pra|pro|ate|as|em)\s*$/i, "").trim();
+    if (titulo) titulo = titulo[0].toUpperCase() + titulo.slice(1);
+    // cliente: "com o Pedro", "do Pedro", "pro Pedro", "da Ana"
+    let cliente = "";
+    const nomes = ctx.clientes || [];
+    const mc = tt.match(/\b(?:com|pro|pra|para|do|da|de|ao|a|o|cliente)\s+(?:o |a |seu |dona |sr\.? |sra\.? )?([a-zà-ÿ]+(?: [a-zà-ÿ]+)?)/g);
+    if (mc) {
+      for (const frag of mc) {
+        const nome = frag.replace(/^\S+\s+(?:o |a |seu |dona |sr\.? |sra\.? )?/, "").trim();
+        const c = casarCliente(nome, nomes) || casarCliente(nome.split(" ")[0], nomes);
+        if (c) { cliente = c; break; }
+      }
+      if (!cliente) {
+        const pos = tt.search(/\b(?:com|pro|pra|para|cliente)\s+(?:o |a |seu |dona )?[a-z]/);
+        if (pos >= 0) { const nm = extrairNome(oo, tt, -1, /\b(?:com|pro|pra|para|cliente)\s+(?:o |a |seu |dona )?/); if (nm && /^[A-ZÀ-Ý]/.test(oo.split(" ").find(w => semAcento(w.toLowerCase()) === semAcento(nm.split(" ")[0].toLowerCase())) || "")) cliente = nm; }
+      }
+    }
+    return { tipo: "agenda", titulo: titulo || "Compromisso", cliente, data: d ? d.data : ctx.hoje, hora: h ? h.hora : "", horaAprox: !!(h && h.aprox), semData: !d };
+  }
+
   function interpretar(texto, ctx) {
     const hoje = ctx.hoje, clientes = ctx.clientes || [];
     const tel = telefone(texto);
@@ -119,6 +170,17 @@
     if (tel) original = original.replace(tel, " ").replace(/\s+/g, " ").trim();
     let t = numerosPorExtenso(semAcento(original.toLowerCase())).replace(/\s+/g, " ").trim();
     const origAlinhado = numerosPorExtenso(original.replace(/\btr[êe]s\b/gi, "tres")).replace(/\s+/g, " ").trim(); // mesmo tamanho de palavras
+
+    // PERGUNTAS DE AGENDA
+    if (/\b(agenda|compromisso|compromissos|o que tenho|que tenho|tenho algo|tenho alguma coisa|meu dia|programado|agendado)\b/.test(t) && (/\?$/.test(t) || /^(qual|quais|o que|que|tenho|como|mostra|me mostra|minha|ver)\b/.test(t))) {
+      const dq = acharData(t, hoje);
+      if (/semana/.test(t)) return { tipo: "pergunta", sobre: "agenda_semana" };
+      return { tipo: "pergunta", sobre: "agenda_dia", data: dq ? dq.data : hoje };
+    }
+    {
+      const ag = interpretarAgenda(original, t, origAlinhado, ctx);
+      if (ag && !/\?$/.test(t)) return ag;
+    }
 
     // PERGUNTAS
     if (/\?$/.test(t) || /^(quem|quanto|quantos|qual|quais|como|tem alguem|lista|mostra|me mostra)\b/.test(t)) {
@@ -202,6 +264,6 @@
     return { tipo: "desconhecido" };
   }
 
-  root.Interpretador = { interpretar, acharData, addDias, iso };
+  root.Interpretador = { interpretar, acharData, acharHora, addDias, iso };
   if (typeof module !== "undefined") module.exports = root.Interpretador;
 })(typeof window !== "undefined" ? window : globalThis);

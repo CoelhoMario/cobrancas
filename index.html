@@ -162,6 +162,23 @@ tr.clic{cursor:pointer}
 .pg input{padding:7px 9px;min-width:0;width:100%}
 #mEdit .box{max-height:90vh;overflow-y:auto;max-width:520px}
 #mEdit .fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+
+.calhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.calhead b{font-size:15px;text-transform:capitalize}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal .wd{font-size:11px;color:var(--muted);text-align:center;font-weight:600;padding:4px 0}
+.cal .d{aspect-ratio:1/1;border-radius:10px;background:var(--card2);border:1px solid transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;font-size:13px;font-weight:600;padding:0}
+.cal .d.out{opacity:.3}
+.cal .d.hj{border-color:var(--green)}
+.cal .d.sel{background:var(--ink);color:#000}
+.cal .d .ds{display:flex;gap:2px;height:5px}
+.cal .d .ds i{width:5px;height:5px;border-radius:50%}
+.dotl{display:inline-block;width:8px;height:8px;border-radius:50%;vertical-align:middle}
+.ev{display:flex;gap:10px;align-items:flex-start}
+.ev .hr{min-width:46px;font-weight:800;color:var(--green);font-variant-numeric:tabular-nums}
+.ev.feito{opacity:.5}.ev.feito .tt{text-decoration:line-through}
+.ev .tt{font-weight:600}
+.ev .chk{width:22px;height:22px;flex:none;margin-top:1px}
 </style>
 </head>
 <body>
@@ -186,6 +203,7 @@ tr.clic{cursor:pointer}
     </div>
     <div class="tabs" id="tabs">
       <button data-v="geral" class="on">Geral</button>
+      <button data-v="agenda">Agenda</button>
       <button data-v="receber">A receber</button>
       <button data-v="clientes">Clientes</button>
       <button data-v="recebidos">Recebidos</button>
@@ -198,12 +216,14 @@ tr.clic{cursor:pointer}
   <section class="assessor">
     <div class="ahead">
       <div class="avatar">$</div>
-      <div><b>Assessor de cobranças</b><span id="aStatus">Toque no microfone e fale, ou digite.</span></div>
+      <div><b>Assessor</b><span id="aStatus">Cobranças e agenda — toque no 🎤 e fale, ou digite.</span></div>
     </div>
     <div class="chat" id="chat"></div>
     <div class="chips" id="chips">
       <span class="chip">Pedro me deve 120 do suporte de óculos, vence sexta</span>
       <span class="chip">A Ana pagou 50 no Pix</span>
+      <span class="chip">Agenda a entrega do Pedro sexta às 15h</span>
+      <span class="chip">O que tenho amanhã?</span>
       <span class="chip">Marcos encomendou 3 chaveiros por 45, pagou 15, o resto dia 20</span>
       <span class="chip">Quem está me devendo?</span>
       <span class="chip">Quanto entra essa semana?</span>
@@ -223,6 +243,7 @@ tr.clic{cursor:pointer}
       <div class="card kpi amber"><div class="l">Vence nos próximos 7 dias</div><div class="v" id="kSemana">—</div><div class="s" id="kSemanaS"></div></div>
       <div class="card kpi green"><div class="l">Recebido este mês</div><div class="v" id="kMes">—</div><div class="s" id="kMesS"></div></div>
     </div>
+    <div class="card mt"><h2>Hoje na agenda <small id="hojeAgQtd"></small></h2><div id="hojeAg"></div><button class="sm mt" data-go="agenda">Abrir agenda</button></div>
     <div class="grid g2 mt">
       <div class="card"><h2>Alertas</h2><div class="alerts" id="alertas"></div></div>
       <div class="card"><h2>Próximos vencimentos</h2><div class="tblwrap"><table><tbody id="proximos"></tbody></table></div></div>
@@ -231,6 +252,19 @@ tr.clic{cursor:pointer}
       <div class="card"><h2>Previsão de entradas <small>· por semana</small></h2><div class="bars" id="chartPrev"></div></div>
       <div class="card"><h2>Recebido por mês <small>· últimos 6 meses</small></h2><div class="bars" id="chartMes"></div></div>
     </div>
+  </div>
+
+  <div class="view" id="v-agenda">
+    <div class="card">
+      <div class="calhead"><button class="sm" id="calPrev">‹</button><b id="calTit"></b><button class="sm" id="calNext">›</button></div>
+      <div class="cal" id="cal"></div>
+      <div class="desc mt"><span class="dotl" style="background:var(--green)"></span> compromisso &nbsp; <span class="dotl" style="background:var(--amber)"></span> vencimento &nbsp; <span class="dotl" style="background:var(--red)"></span> atrasado</div>
+    </div>
+    <div class="card mt">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0" id="diaTit"></h2><button class="sm primary" id="btnNovoAg">+ Compromisso</button></div>
+      <div id="diaLista" class="lista mt"></div>
+    </div>
+    <div class="card mt"><h2>Próximos compromissos</h2><div id="proxAg" class="lista"></div></div>
   </div>
 
   <div class="view" id="v-receber">
@@ -349,6 +383,22 @@ tr.clic{cursor:pointer}
     <div class="row"><button type="button" data-close>Cancelar</button><button type="button" class="primary" id="eSalvar">Salvar</button></div>
   </div>
 </div></div>
+<div class="modal" id="mAg"><div class="box">
+  <h3 id="agTit">Compromisso</h3>
+  <label>O quê<input id="aTitulo" maxlength="120" placeholder="Ex.: Entregar chaveiros"></label>
+  <div class="fg mt" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">
+    <label>Cliente<input id="aCliente" list="listaClientes" maxlength="80"></label>
+    <label>Data<input id="aData" type="date"></label>
+    <label>Hora<input id="aHora" type="time"></label>
+  </div>
+  <label class="mt">Observações<textarea id="aObs" rows="2" maxlength="300"></textarea></label>
+  <label class="mt" style="flex-direction:row;align-items:center;gap:8px;color:var(--ink)"><input type="checkbox" id="aFeito" style="width:18px;height:18px"> Concluído</label>
+  <a class="wa mt" id="aGoogle" target="_blank" rel="noopener" style="display:inline-block">📅 Adicionar ao Google Agenda</a>
+  <div class="row mt" style="justify-content:space-between">
+    <button type="button" class="ghost danger" id="aExcluir">Excluir</button>
+    <div class="row"><button type="button" data-close>Cancelar</button><button type="button" class="primary" id="aSalvar">Salvar</button></div>
+  </div>
+</div></div>
 <div class="modal" id="mDel"><div class="box">
   <h3>Excluir lançamento?</h3><p class="desc" id="mDelInfo"></p>
   <div class="row mt" style="justify-content:flex-end"><button type="button" data-close>Cancelar</button><button type="button" class="primary" id="mDelOk" style="background:var(--red);border-color:var(--red);color:#1a0505">Excluir</button></div>
@@ -379,7 +429,7 @@ tr.clic{cursor:pointer}
 
   // ---------- armazenamento local
   function carregar(){ try{ const d=JSON.parse(localStorage.getItem(KEY)||"[]"); itens=Array.isArray(d)?d:[]; }catch(_){ itens=[]; banner("Não consegui ler os dados salvos neste aparelho."); } }
-  function salvar(){ try{ localStorage.setItem(KEY,JSON.stringify(itens)); }catch(_){ banner("Não consegui salvar neste aparelho. Faça um backup agora."); } render(); }
+  function salvar(){ try{ localStorage.setItem(KEY,JSON.stringify(itens)); }catch(_){ banner("Não consegui salvar neste aparelho. Faça um backup agora."); } render(); try{ renderAgenda(); }catch(_){} }
   carregar();
   if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
 
@@ -621,14 +671,110 @@ tr.clic{cursor:pointer}
     chat.appendChild(c); chat.scrollTop=chat.scrollHeight;
   }
 
+
+  // ---------- AGENDA
+  const AK=KEY+"_agenda";
+  let agenda=[]; try{ const a=JSON.parse(localStorage.getItem(AK)||"[]"); agenda=Array.isArray(a)?a:[]; }catch(_){ agenda=[]; }
+  function salvarAg(){ try{ localStorage.setItem(AK,JSON.stringify(agenda)); }catch(_){ banner("Não consegui salvar a agenda neste aparelho."); } render(); renderAgenda(); }
+  let calMes=hoje().slice(0,7), diaSel=hoje(), agId=null;
+  const MESES_L=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+  const ordAg=(a,b)=>(a.data+(a.hora||"99")).localeCompare(b.data+(b.hora||"99"));
+  function gcalLink(e){
+    const d=e.data.replace(/-/g,""); let dates;
+    if(e.hora){ const [h,m]=e.hora.split(":").map(Number); const fim=new Date(e.data+"T"+e.hora+":00"); fim.setHours(h+1,m); const f=iso(fim).replace(/-/g,"")+"T"+String(fim.getHours()).padStart(2,"0")+String(fim.getMinutes()).padStart(2,"0")+"00"; dates=d+"T"+e.hora.replace(":","")+"00/"+f; }
+    else dates=d+"/"+addDias(e.data,1).replace(/-/g,"");
+    const det=[e.cliente?"Cliente: "+e.cliente:"",e.obs||"","— Cobranças 3D Figures"].filter(Boolean).join("\n");
+    return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent(e.titulo+(e.cliente&&!e.titulo.includes(e.cliente.split(" ")[0])?" — "+e.cliente:""))+"&dates="+dates+"&ctz=America/Sao_Paulo&details="+encodeURIComponent(det);
+  }
+  function evHTML(e,comData){
+    return '<div class="item ev'+(e.feito?" feito":"")+'" data-ag="'+esc(e.id)+'"><input type="checkbox" class="chk" data-feito="'+esc(e.id)+'"'+(e.feito?" checked":"")+'><div class="hr">'+(e.hora||"—")+'</div><div style="flex:1;min-width:0"><div class="tt">'+esc(e.titulo)+'</div>'+
+      '<div class="desc">'+(comData?fmtData(e.data)+" · "+DIAS[new Date(e.data+"T12:00:00").getDay()]+(e.cliente?" · ":""):"")+(e.cliente?esc(e.cliente):"")+(e.obs?(e.cliente||comData?" · ":"")+esc(e.obs):"")+'</div></div></div>';
+  }
+  function vencHTML(it){ const st=status(it); return '<div class="item" data-edit="'+esc(it.id)+'"><div class="l1"><b>💰 '+esc(it.cliente)+'</b><span class="f" style="color:'+(st==="atrasado"?"var(--red)":"var(--amber)")+'">'+brl(falta(it))+'</span></div><div class="desc">Vencimento'+(it.descricao?" · "+esc(it.descricao):"")+'</div></div>'; }
+  function renderAgenda(){
+    const [y,mo]=calMes.split("-").map(Number); const prim=new Date(y,mo-1,1,12); const h=hoje();
+    $("#calTit").textContent=MESES_L[mo-1]+" "+y;
+    let html=["D","S","T","Q","Q","S","S"].map(w=>'<div class="wd">'+w+'</div>').join("");
+    const ini=new Date(prim); ini.setDate(1-prim.getDay());
+    for(let i=0;i<42;i++){ const dt=new Date(ini); dt.setDate(ini.getDate()+i); const ds=iso(dt);
+      if(i>=35&&dt.getMonth()!==mo-1) break;
+      const evs=agenda.filter(e=>e.data===ds&&!e.feito).length, vs=itens.filter(it=>falta(it)>0&&it.vencimento===ds);
+      const dots=(evs?'<i style="background:var(--green)"></i>':'')+(vs.length?'<i style="background:'+(ds<h?'var(--red)':'var(--amber)')+'"></i>':'');
+      html+='<button class="d'+(dt.getMonth()!==mo-1?" out":"")+(ds===h?" hj":"")+(ds===diaSel?" sel":"")+'" data-dia="'+ds+'">'+dt.getDate()+'<span class="ds">'+dots+'</span></button>';
+    }
+    $("#cal").innerHTML=html;
+    const dd=new Date(diaSel+"T12:00:00");
+    $("#diaTit").textContent=(diaSel===h?"Hoje, ":diaSel===addDias(h,1)?"Amanhã, ":DIAS[dd.getDay()]+", ")+dd.getDate()+" de "+MESES_L[dd.getMonth()];
+    const evs=agenda.filter(e=>e.data===diaSel).sort(ordAg), vs=itens.filter(it=>falta(it)>0&&it.vencimento===diaSel);
+    $("#diaLista").innerHTML=(evs.map(e=>evHTML(e,false)).join("")+vs.map(vencHTML).join(""))||'<div class="empty">Nada neste dia.</div>';
+    const prox=agenda.filter(e=>!e.feito&&e.data>=h).sort(ordAg).slice(0,8);
+    $("#proxAg").innerHTML=prox.length?prox.map(e=>evHTML(e,true)).join(""):'<div class="empty">Nenhum compromisso marcado. Fale com o assessor: “agenda a entrega do Pedro sexta às 15h”.</div>';
+    const hj=agenda.filter(e=>e.data===h).sort(ordAg);
+    $("#hojeAgQtd").textContent=hj.length?"· "+hj.filter(e=>!e.feito).length+" pendente(s)":"";
+    $("#hojeAg").innerHTML=hj.length?'<div class="lista">'+hj.map(e=>evHTML(e,false)).join("")+'</div>':'<div class="desc">Nenhum compromisso hoje.</div>';
+  }
+  $("#cal").addEventListener("click",e=>{ const b=e.target.closest("[data-dia]"); if(!b) return; diaSel=b.dataset.dia; if(diaSel.slice(0,7)!==calMes) calMes=diaSel.slice(0,7); renderAgenda(); });
+  const mudaMes=n=>{ const [y,m]=calMes.split("-").map(Number); const d=new Date(y,m-1+n,1,12); calMes=iso(d).slice(0,7); renderAgenda(); };
+  $("#calPrev").onclick=()=>mudaMes(-1); $("#calNext").onclick=()=>mudaMes(1);
+  document.addEventListener("change",e=>{ const c=e.target.closest("[data-feito]"); if(!c) return; const ev=agenda.find(x=>x.id===c.dataset.feito); if(ev){ ev.feito=c.checked; salvarAg(); } });
+  document.addEventListener("click",e=>{ if(e.target.closest("[data-feito],a,button,input,select,textarea,label")) return; const el=e.target.closest("[data-ag]"); if(el) abrirAg(el.dataset.ag); });
+  function abrirAg(id,novo){
+    const ev=id?agenda.find(x=>x.id===id):Object.assign({titulo:"",cliente:"",data:diaSel,hora:"",obs:"",feito:false},novo||{});
+    if(!ev) return; agId=id||null;
+    $("#agTit").textContent=id?"Editar compromisso":"Novo compromisso";
+    $("#aTitulo").value=ev.titulo||""; $("#aCliente").value=ev.cliente||""; $("#aData").value=ev.data||hoje(); $("#aHora").value=ev.hora||""; $("#aObs").value=ev.obs||""; $("#aFeito").checked=!!ev.feito;
+    $("#aExcluir").style.display=id?"":"none"; atualizaG(); $("#mAg").classList.add("open");
+  }
+  function lerAg(){ return {titulo:$("#aTitulo").value.trim()||"Compromisso",cliente:$("#aCliente").value.trim(),data:validData($("#aData").value)?$("#aData").value:hoje(),hora:$("#aHora").value||"",obs:$("#aObs").value.trim(),feito:$("#aFeito").checked}; }
+  function atualizaG(){ $("#aGoogle").href=gcalLink(lerAg()); }
+  ["#aTitulo","#aCliente","#aData","#aHora","#aObs"].forEach(s=>$(s).addEventListener("input",atualizaG));
+  $("#btnNovoAg").onclick=()=>abrirAg(null);
+  $("#aSalvar").onclick=()=>{ const d=lerAg(); if(agId){ Object.assign(agenda.find(x=>x.id===agId)||{},d); } else agenda.push({id:novoId(),...d,criadoEm:new Date().toISOString()}); diaSel=d.data; calMes=d.data.slice(0,7); salvarAg(); $("#mAg").classList.remove("open"); toast("Compromisso salvo."); };
+  $("#aExcluir").onclick=()=>{ if($("#aExcluir").dataset.ok!=="1"){ $("#aExcluir").dataset.ok="1"; $("#aExcluir").textContent="Toque de novo"; setTimeout(()=>{ $("#aExcluir").dataset.ok=""; $("#aExcluir").textContent="Excluir"; },2500); return; }
+    agenda=agenda.filter(x=>x.id!==agId); $("#aExcluir").dataset.ok=""; $("#aExcluir").textContent="Excluir"; salvarAg(); $("#mAg").classList.remove("open"); toast("Compromisso excluído."); };
+
+  function cartaoAgenda(r){
+    const c=document.createElement("div"); c.className="acao col";
+    c.innerHTML='<div class="t"><b>Novo compromisso</b> — confira e confirme:</div>'+
+      '<div class="mini"><label>O quê<input data-k="titulo" value="'+esc(r.titulo)+'"></label>'+
+      '<label>Cliente<input data-k="cliente" list="listaClientes" value="'+esc(r.cliente)+'"></label>'+
+      '<label>Data<input data-k="data" type="date" value="'+esc(r.data)+'"></label>'+
+      '<label>Hora<input data-k="hora" type="time" value="'+esc(r.hora)+'"></label></div>'+
+      (r.semData?'<div class="desc">Não ouvi a data — deixei hoje.</div>':r.horaAprox?'<div class="desc">Coloquei um horário aproximado. Ajuste se precisar.</div>':!r.hora?'<div class="desc">Sem horário (dia todo).</div>':'')+
+      '<div class="row"><button class="sm primary" data-ok>Agendar</button><button class="sm ghost" data-no>Descartar</button></div>';
+    const g=k=>c.querySelector('[data-k="'+k+'"]').value;
+    c.querySelector("[data-ok]").onclick=()=>{
+      const ev={id:novoId(),titulo:g("titulo").trim()||"Compromisso",cliente:g("cliente").trim(),data:validData(g("data"))?g("data"):hoje(),hora:g("hora")||"",obs:"",feito:false,criadoEm:new Date().toISOString()};
+      agenda.push(ev); diaSel=ev.data; calMes=ev.data.slice(0,7); salvarAg();
+      c.querySelectorAll("input,button").forEach(x=>x.disabled=true); c.querySelector("[data-ok]").textContent="Agendado ✓"; c.querySelector("[data-no]").remove();
+      const row=c.querySelector(".row");
+      const gl=document.createElement("a"); gl.className="wa"; gl.target="_blank"; gl.rel="noopener"; gl.href=gcalLink(ev); gl.textContent="📅 Google Agenda"; row.appendChild(gl);
+      const ed=document.createElement("button"); ed.className="sm"; ed.textContent="Editar"; ed.onclick=()=>abrirAg(ev.id); row.appendChild(ed);
+    };
+    c.querySelector("[data-no]").onclick=()=>{ c.classList.add("done"); c.querySelectorAll("input,button").forEach(x=>x.disabled=true); c.querySelector("[data-no]").textContent="Descartado"; };
+    chat.appendChild(c); chat.scrollTop=chat.scrollHeight;
+  }
+  function responderAgenda(r){
+    const h=hoje();
+    const lin=e=>"• "+(e.hora||"dia todo")+" — "+esc(e.titulo)+(e.cliente&&!e.titulo.includes(e.cliente.split(" ")[0])?" ("+esc(e.cliente)+")":"")+(e.feito?" ✓":"");
+    if(r.sobre==="agenda_semana"){ const l=agenda.filter(e=>e.data>=h&&e.data<=addDias(h,7)&&!e.feito).sort(ordAg);
+      if(!l.length) return "Nada na agenda nos próximos 7 dias.";
+      let out="<b>Próximos 7 dias:</b>", ult=""; for(const e of l){ if(e.data!==ult){ ult=e.data; out+="\n<b>"+DIAS[new Date(e.data+"T12:00:00").getDay()]+" "+fmtData(e.data).slice(0,5)+"</b>"; } out+="\n"+lin(e); } return out; }
+    const d=r.data||h, l=agenda.filter(e=>e.data===d).sort(ordAg), vs=itens.filter(it=>falta(it)>0&&it.vencimento===d);
+    const nome=d===h?"Hoje":d===addDias(h,1)?"Amanhã":DIAS[new Date(d+"T12:00:00").getDay()]+" "+fmtData(d).slice(0,5);
+    if(!l.length&&!vs.length) return nome+" você não tem nada marcado.";
+    return "<b>"+nome+":</b>"+(l.length?"\n"+l.map(lin).join("\n"):"\nNenhum compromisso.")+(vs.length?"\n\n💰 Vencem: "+vs.map(i=>esc(i.cliente)+" "+brl(falta(i))).join(", "):"");
+  }
   function enviar(){
     const caixa=$("#entrada"); const t=caixa.value.trim(); if(!t) return;
     bolha(esc(t),"u"); caixa.value=""; caixa.style.height="auto";
     const r=Interpretador.interpretar(t,{hoje:hoje(),clientes:clientes()});
-    if(r.tipo==="pergunta") bolha(responderPergunta(r),"a");
+    if(r.tipo==="pergunta"&&/^agenda/.test(r.sobre)) bolha(responderAgenda(r),"a");
+    else if(r.tipo==="agenda") cartaoAgenda(r);
+    else if(r.tipo==="pergunta") bolha(responderPergunta(r),"a");
     else if(r.tipo==="divida") cartaoDivida(r);
     else if(r.tipo==="pagamento") cartaoPagamento(r);
-    else bolha("Não entendi. Tente assim:\n• “Pedro me deve 120 do suporte, vence sexta”\n• “A Ana pagou 50”\n• “Quem está me devendo?”","a",true);
+    else bolha("Não entendi. Tente assim:\n• “Pedro me deve 120 do suporte, vence sexta”\n• “A Ana pagou 50”\n• “Agenda a entrega do Pedro sexta às 15h”\n• “O que tenho amanhã?”","a",true);
   }
   $("#enviar").onclick=enviar;
   $("#entrada").addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); enviar(); } });
@@ -652,7 +798,7 @@ tr.clic{cursor:pointer}
 
   // ---------- BACKUP
   $("#btnExport").onclick=()=>{
-    const blob=new Blob([JSON.stringify({app:"cobrancas-3dfigures",versao:1,exportadoEm:new Date().toISOString(),itens},null,1)],{type:"application/json"});
+    const blob=new Blob([JSON.stringify({app:"cobrancas-3dfigures",versao:2,exportadoEm:new Date().toISOString(),itens,agenda},null,1)],{type:"application/json"});
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="backup-cobrancas-"+hoje()+".json"; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href),4000);
     try{ localStorage.setItem(KEY+"_bk",String(Date.now())); }catch(_){} render(); toast("Backup baixado.");
@@ -661,7 +807,8 @@ tr.clic{cursor:pointer}
     const f=e.target.files&&e.target.files[0]; if(!f) return;
     try{ const d=JSON.parse(await f.text()); const lista=Array.isArray(d)?d:d.itens; if(!Array.isArray(lista)) throw 0;
       const ids=new Set(itens.map(i=>i.id)); let n=0; for(const it of lista){ if(it&&it.id&&!ids.has(it.id)){ itens.push(it); n++; } }
-      salvar(); toast(n+" lançamento(s) restaurado(s)."); }catch(_){ toast("Arquivo de backup inválido."); }
+      let na=0; if(Array.isArray(d.agenda)){ const ia=new Set(agenda.map(e=>e.id)); for(const e of d.agenda){ if(e&&e.id&&!ia.has(e.id)){ agenda.push(e); na++; } } }
+      salvar(); salvarAg(); toast(n+" lançamento(s) e "+na+" compromisso(s) restaurados."); }catch(_){ toast("Arquivo de backup inválido."); }
     e.target.value="";
   };
   $("#btnCsv").onclick=async()=>{
@@ -716,14 +863,14 @@ tr.clic{cursor:pointer}
   document.addEventListener("keydown",e=>{ if(!$("#lock").classList.contains("on")) return; if(/^\d$/.test(e.key)&&digitado.length<4){ digitado+=e.key; pinsUI(); if(digitado.length===4) setTimeout(completo,120); } else if(e.key==="Backspace"){ digitado=digitado.slice(0,-1); pinsUI(); } });
   $("#lockEsqueci").onclick=()=>{ $("#lockMsg").innerHTML='Sem o PIN não dá para abrir. Para recomeçar, todos os lançamentos deste celular serão apagados (você pode restaurar um backup depois). <br><br><button id="apagarTudo" style="background:var(--red);border-color:var(--red);color:#1a0505">Apagar tudo e criar novo PIN</button>';
     $("#apagarTudo").onclick=()=>{ if($("#apagarTudo").dataset.ok!=="1"){ $("#apagarTudo").dataset.ok="1"; $("#apagarTudo").textContent="Toque de novo para confirmar"; return; }
-      itens=[]; try{ localStorage.removeItem(KEY); localStorage.removeItem(PK); localStorage.removeItem(PK+"_sal"); }catch(_){} render(); travar("criar"); }; };
+      itens=[]; try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY+"_agenda"); agenda=[]; localStorage.removeItem(PK); localStorage.removeItem(PK+"_sal"); }catch(_){} render(); travar("criar"); }; };
   $("#btnTrocaPin").onclick=()=>travar("novo");
   $("#btnTravar").onclick=()=>travar("entrar");
   document.addEventListener("visibilitychange",()=>{ if(document.hidden) saiuEm=Date.now(); else if(saiuEm&&Date.now()-saiuEm>120000&&localStorage.getItem(PK)) travar("entrar"); });
   travar();
-  render();
+  render(); renderAgenda();
   // atualiza ao voltar para o app (vira o dia, etc.)
-  document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ carregar(); render(); } });
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ carregar(); render(); renderAgenda(); } });
 })();
 </script>
 
