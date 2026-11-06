@@ -148,6 +148,20 @@ body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bot
 .pad button.blank{visibility:hidden}
 #lockEsqueci{background:transparent;border:0;color:var(--muted);font-size:13px;text-decoration:underline}
 body.travado .wrap{filter:blur(12px)}
+
+.lista{display:flex;flex-direction:column;gap:8px}
+.item{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer}
+.item:active{border-color:var(--green)}
+.item .l1{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.item .l1 b{font-size:15px}
+.item .l1 .f{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.item .l3{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--muted)}
+.item .acts{margin-top:10px}
+tr.clic{cursor:pointer}
+.pg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) auto;gap:6px;align-items:center;margin-top:6px}
+.pg input{padding:7px 9px;min-width:0;width:100%}
+#mEdit .box{max-height:90vh;overflow-y:auto;max-width:520px}
+#mEdit .fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 </style>
 </head>
 <body>
@@ -255,12 +269,7 @@ body.travado .wrap{filter:blur(12px)}
         </div>
         <input id="busca" placeholder="Buscar cliente ou pedido…" style="min-width:200px">
       </div>
-      <div class="tblwrap">
-        <table>
-          <thead><tr><th>Vencimento</th><th>Cliente</th><th>Status</th><th class="num">Total</th><th class="num">Recebido</th><th class="num">Falta</th><th>Ações</th></tr></thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
+      <div class="lista" id="lista"></div>
     </div>
   </div>
 
@@ -320,6 +329,26 @@ body.travado .wrap{filter:blur(12px)}
   <label class="mt">Data<input id="mPagData" type="date"></label>
   <div class="row mt" style="justify-content:flex-end"><button type="button" data-close>Cancelar</button><button type="button" class="primary" id="mPagOk">Confirmar</button></div>
 </div></div>
+<div class="modal" id="mEdit"><div class="box">
+  <h3>Editar lançamento</h3>
+  <div class="fg">
+    <label>Cliente<input id="eCliente" list="listaClientes" maxlength="80"></label>
+    <label>WhatsApp<input id="eTelefone" inputmode="tel" maxlength="25"></label>
+    <label>Descrição / pedido<input id="eDescricao" maxlength="140"></label>
+    <label>Valor total (R$)<input id="eValor" inputmode="decimal"></label>
+    <label>Data da venda<input id="eDataVenda" type="date"></label>
+    <label>Vencimento<input id="eVencimento" type="date"></label>
+    <label>Forma<select id="eForma"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Boleto</option><option>Transferência</option><option>Outro</option></select></label>
+  </div>
+  <label class="mt">Observações<textarea id="eObs" rows="2" maxlength="300"></textarea></label>
+  <div class="mt"><b style="font-size:13px">Pagamentos recebidos</b> <span class="desc" id="eResumo"></span></div>
+  <div id="ePags"></div>
+  <button type="button" class="sm mt" id="eAddPag">+ Adicionar pagamento</button>
+  <div class="row mt" style="justify-content:space-between">
+    <button type="button" class="ghost danger" id="eExcluir">Excluir</button>
+    <div class="row"><button type="button" data-close>Cancelar</button><button type="button" class="primary" id="eSalvar">Salvar</button></div>
+  </div>
+</div></div>
 <div class="modal" id="mDel"><div class="box">
   <h3>Excluir lançamento?</h3><p class="desc" id="mDelInfo"></p>
   <div class="row mt" style="justify-content:flex-end"><button type="button" data-close>Cancelar</button><button type="button" class="primary" id="mDelOk" style="background:var(--red);border-color:var(--red);color:#1a0505">Excluir</button></div>
@@ -371,10 +400,11 @@ body.travado .wrap{filter:blur(12px)}
   // ---------- operações
   function criar(d){
     const valor=num(d.valor), recebido=Math.min(num(d.recebido),valor);
-    itens.push({id:novoId(), cliente:String(d.cliente||"").trim().slice(0,80), telefone:String(d.telefone||"").trim().slice(0,25), descricao:String(d.descricao||"").trim().slice(0,140),
+    const id=novoId();
+    itens.push({id, cliente:String(d.cliente||"").trim().slice(0,80), telefone:String(d.telefone||"").trim().slice(0,25), descricao:String(d.descricao||"").trim().slice(0,140),
       valor, recebido, dataVenda:validData(d.dataVenda)?d.dataVenda:hoje(), vencimento:validData(d.vencimento)?d.vencimento:hoje(), forma:String(d.forma||"Pix"), obs:String(d.obs||"").trim().slice(0,300),
       pagamentos:recebido>0?[{valor:recebido,data:hoje()}]:[], criadoEm:new Date().toISOString()});
-    salvar();
+    salvar(); return id;
   }
   function pagar(id,valor,data){
     const it=itens.find(i=>i.id===id); if(!it) return false;
@@ -422,7 +452,7 @@ body.travado .wrap{filter:blur(12px)}
     $("#ultimoBackup").textContent=ult?"Último backup: "+new Date(Number(ult)).toLocaleString("pt-BR"):"Nenhum backup feito ainda.";
 
     const prox=itens.filter(i=>falta(i)>0&&i.vencimento>=h).sort((a,b)=>a.vencimento.localeCompare(b.vencimento)).slice(0,6);
-    $("#proximos").innerHTML=prox.length?prox.map(it=>'<tr><td>'+fmtData(it.vencimento)+'<div class="desc">'+DIAS[new Date(it.vencimento+"T12:00:00").getDay()]+'</div></td><td><b>'+esc(it.cliente)+'</b>'+(it.descricao?'<div class="desc">'+esc(it.descricao)+'</div>':'')+'</td><td class="num"><b>'+brl(falta(it))+'</b></td></tr>').join(""):'<tr><td class="empty">Nenhum vencimento futuro.</td></tr>';
+    $("#proximos").innerHTML=prox.length?prox.map(it=>'<tr class="clic" data-edit="'+esc(it.id)+'"><td>'+fmtData(it.vencimento)+'<div class="desc">'+DIAS[new Date(it.vencimento+"T12:00:00").getDay()]+'</div></td><td><b>'+esc(it.cliente)+'</b>'+(it.descricao?'<div class="desc">'+esc(it.descricao)+'</div>':'')+'</td><td class="num"><b>'+brl(falta(it))+'</b></td></tr>').join(""):'<tr><td class="empty">Nenhum vencimento futuro.</td></tr>';
 
     const q=$("#busca").value.trim().toLowerCase();
     const lista=itens.filter(it=>{ const st=status(it);
@@ -432,22 +462,21 @@ body.travado .wrap{filter:blur(12px)}
       if(q&&!((it.cliente||"")+" "+(it.descricao||"")).toLowerCase().includes(q)) return false;
       return true;
     }).sort((a,b)=>filtro==="pagos"?(b.vencimento||"").localeCompare(a.vencimento||""):(a.vencimento||"").localeCompare(b.vencimento||""));
-    $("#tbody").innerHTML=lista.length?lista.map(it=>{ const st=status(it), f=falta(it);
-      return '<tr><td>'+fmtData(it.vencimento)+'</td><td><b>'+esc(it.cliente)+'</b>'+(it.descricao?'<div class="desc">'+esc(it.descricao)+'</div>':'')+(it.obs?'<div class="desc">'+esc(it.obs)+'</div>':'')+'</td>'+
-      '<td><span class="tag t-'+st+'">'+rotulo[st]+'</span><div class="desc">'+esc(it.forma||"")+'</div></td>'+
-      '<td class="num">'+brl(it.valor)+'</td><td class="num">'+brl(it.recebido)+'</td><td class="num"><b>'+brl(f)+'</b></td>'+
-      '<td><div class="acts">'+(f>0?'<button class="sm" data-a="pag" data-id="'+esc(it.id)+'">Receber</button>':'')+
-      '<button class="sm ghost" data-a="edit" data-id="'+esc(it.id)+'">Editar</button><button class="sm ghost danger" data-a="del" data-id="'+esc(it.id)+'">Excluir</button>'+waLink(it)+'</div></td></tr>';
-    }).join(""):'<tr><td colspan="7" class="empty">'+(itens.length?"Nada neste filtro.":"Nenhum lançamento ainda. Fale com o assessor acima ou lance manualmente.")+'</td></tr>';
+    $("#lista").innerHTML=lista.length?lista.map(it=>{ const st=status(it), f=falta(it);
+      return '<div class="item" data-edit="'+esc(it.id)+'"><div class="l1"><b>'+esc(it.cliente)+'</b><span class="f" style="color:'+(st==="pago"?"var(--green)":st==="atrasado"?"var(--red)":"var(--ink)")+'">'+(st==="pago"?brl(it.valor):brl(f))+'</span></div>'+
+      (it.descricao?'<div class="desc">'+esc(it.descricao)+'</div>':'')+(it.obs?'<div class="desc">'+esc(it.obs)+'</div>':'')+
+      '<div class="l3"><span class="tag t-'+st+'">'+rotulo[st]+'</span><span>Vence '+fmtData(it.vencimento)+'</span><span>· Total '+brl(it.valor)+(it.recebido?' · Pago '+brl(it.recebido):'')+'</span></div>'+
+      '<div class="acts">'+(f>0?'<button class="sm primary" data-a="pag" data-id="'+esc(it.id)+'">Receber</button>':'')+'<button class="sm" data-a="edit" data-id="'+esc(it.id)+'">Editar</button>'+waLink(it)+'</div></div>';
+    }).join(""):'<div class="empty">'+(itens.length?"Nada neste filtro.":"Nenhum lançamento ainda. Fale com o assessor acima ou lance manualmente.")+'</div>';
 
     const mapa={};
     for(const it of itens){ const k=(it.cliente||"").trim()||"(sem nome)"; const m=mapa[k]||(mapa[k]={n:0,at:0,t:0,pago:0}); const f=falta(it); m.pago+=Number(it.recebido)||0; if(f>0){m.n++;m.t+=f;} if(status(it)==="atrasado") m.at+=f; }
     const cl=Object.entries(mapa).sort((a,b)=>b[1].t-a[1].t||b[1].pago-a[1].pago);
     $("#tclientes").innerHTML=cl.length?cl.map(([c,m])=>'<tr><td><b>'+esc(c)+'</b></td><td class="num">'+m.n+'</td><td class="num" style="color:'+(m.at>0?'var(--red)':'inherit')+'">'+brl(m.at)+'</td><td class="num">'+brl(m.pago)+'</td><td class="num"><b>'+brl(m.t)+'</b></td><td><button class="sm ghost" data-cli="'+esc(c)+'">Ver</button></td></tr>').join(""):'<tr><td colspan="6" class="empty">Nenhum cliente ainda.</td></tr>';
 
-    const pags=[]; for(const it of itens) for(const p of (it.pagamentos||[])) pags.push({...p,cliente:it.cliente,descricao:it.descricao});
+    const pags=[]; for(const it of itens) for(const p of (it.pagamentos||[])) pags.push({...p,id:it.id,cliente:it.cliente,descricao:it.descricao});
     pags.sort((a,b)=>(b.data||"").localeCompare(a.data||""));
-    $("#trecebidos").innerHTML=pags.length?pags.slice(0,300).map(p=>'<tr><td>'+fmtData(p.data)+'</td><td>'+esc(p.cliente)+'</td><td class="desc">'+esc(p.descricao||"")+'</td><td class="num" style="color:var(--green)"><b>'+brl(p.valor)+'</b></td></tr>').join(""):'<tr><td colspan="4" class="empty">Nenhum pagamento registrado.</td></tr>';
+    $("#trecebidos").innerHTML=pags.length?pags.slice(0,300).map(p=>'<tr class="clic" data-edit="'+esc(p.id)+'"><td>'+fmtData(p.data)+'</td><td>'+esc(p.cliente)+'</td><td class="desc">'+esc(p.descricao||"")+'</td><td class="num" style="color:var(--green)"><b>'+brl(p.valor)+'</b></td></tr>').join(""):'<tr><td colspan="4" class="empty">Nenhum pagamento registrado.</td></tr>';
 
     $("#listaClientes").innerHTML=clientes().map(n=>'<option value="'+esc(n)+'">').join("");
   }
@@ -479,23 +508,44 @@ body.travado .wrap{filter:blur(12px)}
     } else { criar({cliente:form.cliente.value,telefone:form.telefone.value,descricao:form.descricao.value,valor,recebido,dataVenda:form.dataVenda.value,vencimento:form.vencimento.value,forma:form.forma.value,obs:form.obs.value}); toast("Lançamento salvo."); }
     limpar();
   });
-  $("#tbody").addEventListener("click",e=>{
+  $("#lista").addEventListener("click",e=>{
     const b=e.target.closest("button[data-a]"); if(!b) return;
+    e.stopPropagation();
     const it=itens.find(i=>i.id===b.dataset.id); if(!it) return;
-    if(b.dataset.a==="edit"){
-      editId=it.id; $("#detForm").open=true;
-      form.cliente.value=it.cliente||""; form.telefone.value=it.telefone||""; form.descricao.value=it.descricao||"";
-      form.valor.value=vir(it.valor); form.recebido.value=it.recebido?vir(it.recebido):"";
-      form.dataVenda.value=it.dataVenda||""; form.vencimento.value=it.vencimento||""; form.forma.value=it.forma||"Pix"; form.obs.value=it.obs||"";
-      $("#formTitle").textContent="Editando: "+(it.cliente||""); $("#btnSalvar").textContent="Salvar alterações"; $("#btnCancelar").style.display="";
-      form.scrollIntoView({behavior:"smooth",block:"center"});
-    } else if(b.dataset.a==="pag"){
-      alvo=it; $("#mPagInfo").textContent=(it.cliente||"")+" — falta "+brl(falta(it));
-      $("#mPagValor").value=vir(falta(it)); $("#mPagData").value=hoje(); $("#mPag").classList.add("open");
-    } else if(b.dataset.a==="del"){
-      alvo=it; $("#mDelInfo").textContent=(it.cliente||"")+" — "+brl(it.valor)+(it.descricao?" ("+it.descricao+")":""); $("#mDel").classList.add("open");
-    }
-  });
+    if(b.dataset.a==="edit") abrirEditor(it.id);
+    else if(b.dataset.a==="pag"){ alvo=it; $("#mPagInfo").textContent=(it.cliente||"")+" — falta "+brl(falta(it)); $("#mPagValor").value=vir(falta(it)); $("#mPagData").value=hoje(); $("#mPag").classList.add("open"); }
+  },true);
+  document.addEventListener("click",e=>{ if(e.target.closest("a,button,input,select,textarea,label")) return; const el=e.target.closest("[data-edit]"); if(el) abrirEditor(el.dataset.edit); });
+
+  // ---------- editor
+  let eId=null, ePags=[];
+  function pagsUI(){
+    $("#ePags").innerHTML=ePags.length?ePags.map((p,i)=>'<div class="pg"><input type="number" step="0.01" inputmode="decimal" data-i="'+i+'" data-f="valor" value="'+(Number(p.valor)||0)+'"><input type="date" data-i="'+i+'" data-f="data" value="'+esc(p.data||hoje())+'"><button type="button" class="sm ghost danger" data-rm="'+i+'">✕</button></div>').join(""):'<div class="desc">Nenhum pagamento ainda.</div>';
+    resumo();
+  }
+  function resumo(){ const tot=ePags.reduce((s,p)=>s+(Number(p.valor)||0),0); const v=num($("#eValor").value); $("#eResumo").textContent="· recebido "+brl(tot)+" · falta "+brl(Math.max(0,v-tot)); }
+  function abrirEditor(id){
+    const it=itens.find(i=>i.id===id); if(!it) return; eId=id;
+    $("#eCliente").value=it.cliente||""; $("#eTelefone").value=it.telefone||""; $("#eDescricao").value=it.descricao||"";
+    $("#eValor").value=vir(it.valor); $("#eDataVenda").value=it.dataVenda||""; $("#eVencimento").value=it.vencimento||""; $("#eForma").value=it.forma||"Pix"; $("#eObs").value=it.obs||"";
+    ePags=(it.pagamentos&&it.pagamentos.length)?it.pagamentos.map(p=>({...p})):(Number(it.recebido)>0?[{valor:Number(it.recebido),data:it.dataVenda||hoje()}]:[]);
+    pagsUI(); $("#mEdit").classList.add("open");
+  }
+  $("#ePags").addEventListener("input",e=>{ const x=e.target; if(x.dataset.i==null) return; ePags[+x.dataset.i][x.dataset.f]=x.dataset.f==="valor"?Number(x.value):x.value; resumo(); });
+  $("#ePags").addEventListener("click",e=>{ const b=e.target.closest("[data-rm]"); if(!b) return; ePags.splice(+b.dataset.rm,1); pagsUI(); });
+  $("#eAddPag").onclick=()=>{ const v=num($("#eValor").value), tot=ePags.reduce((s,p)=>s+(Number(p.valor)||0),0); ePags.push({valor:Math.max(0,Math.round((v-tot)*100)/100),data:hoje()}); pagsUI(); };
+  $("#eValor").addEventListener("input",resumo);
+  $("#eSalvar").onclick=()=>{
+    const it=itens.find(i=>i.id===eId); if(!it) return;
+    const valor=num($("#eValor").value); if(valor<=0){ toast("Informe o valor total."); return; }
+    if(!$("#eCliente").value.trim()){ toast("Informe o cliente."); return; }
+    const pagamentos=ePags.map(p=>({valor:Math.round((Number(p.valor)||0)*100)/100,data:validData(p.data)?p.data:hoje()})).filter(p=>p.valor>0);
+    Object.assign(it,{cliente:$("#eCliente").value.trim(),telefone:$("#eTelefone").value.trim(),descricao:$("#eDescricao").value.trim(),valor,
+      dataVenda:$("#eDataVenda").value||"",vencimento:validData($("#eVencimento").value)?$("#eVencimento").value:it.vencimento,forma:$("#eForma").value,obs:$("#eObs").value.trim(),
+      pagamentos,recebido:Math.round(pagamentos.reduce((s,p)=>s+p.valor,0)*100)/100,atualizadoEm:new Date().toISOString()});
+    salvar(); $("#mEdit").classList.remove("open"); toast("Lançamento atualizado.");
+  };
+  $("#eExcluir").onclick=()=>{ const it=itens.find(i=>i.id===eId); if(!it) return; alvo=it; $("#mEdit").classList.remove("open"); $("#mDelInfo").textContent=(it.cliente||"")+" — "+brl(it.valor)+(it.descricao?" ("+it.descricao+")":""); $("#mDel").classList.add("open"); };
   document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>b.closest(".modal").classList.remove("open"));
   document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{ if(e.target===m) m.classList.remove("open"); }));
   $("#mPagOk").onclick=()=>{ if(!alvo) return; if(!pagar(alvo.id,$("#mPagValor").value,$("#mPagData").value)){ toast("Informe o valor recebido."); return; } $("#mPag").classList.remove("open"); toast("Pagamento registrado."); };
@@ -536,8 +586,9 @@ body.travado .wrap{filter:blur(12px)}
       const g=k=>c.querySelector('[data-k="'+k+'"]').value;
       if(!g("cliente").trim()){ toast("Informe o cliente."); return; }
       if(num(g("valor"))<=0){ toast("Informe o valor total."); return; }
-      criar({cliente:g("cliente"),descricao:g("descricao"),valor:g("valor"),recebido:g("recebido"),vencimento:g("vencimento"),telefone:g("telefone"),forma:r.forma});
+      const nid=criar({cliente:g("cliente"),descricao:g("descricao"),valor:g("valor"),recebido:g("recebido"),vencimento:g("vencimento"),telefone:g("telefone"),forma:r.forma});
       c.classList.add("done"); c.querySelectorAll("input,button").forEach(x=>x.disabled=true); c.querySelector("[data-ok]").textContent="Lançado ✓";
+      const ed=document.createElement("button"); ed.className="sm"; ed.textContent="Editar"; ed.onclick=()=>abrirEditor(nid); c.querySelector(".row").appendChild(ed); c.classList.remove("done");
     };
     c.querySelector("[data-no]").onclick=()=>{ c.classList.add("done"); c.querySelectorAll("input,button").forEach(x=>x.disabled=true); c.querySelector("[data-no]").textContent="Descartado"; };
     chat.appendChild(c); chat.scrollTop=chat.scrollHeight;
