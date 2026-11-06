@@ -202,7 +202,7 @@ tr.clic{cursor:pointer}
   <header>
     <div>
       <h1>Cobranças</h1>
-      <p class="sub">3D Figures Jlle Printer · <span id="hojeTxt"></span></p>
+      <p class="sub">3D Figures Jlle Printer · <span id="hojeTxt"></span> <span id="syncIco" title="Sincronização"></span></p>
     </div>
     <div class="tabs" id="tabs">
       <button data-v="geral" class="on">Geral</button>
@@ -359,13 +359,13 @@ tr.clic{cursor:pointer}
       <div class="row mt"><button id="btnTsv">Importar</button></div>
     </div>
     <div class="card mt">
-      <h2>Resumo diário no WhatsApp</h2>
-      <p class="desc">O app guarda uma cópia dos seus dados no seu repositório <b>privado</b> do GitHub, e de lá sai um resumo para o seu WhatsApp todo dia às 7h30.</p>
+      <h2>Sincronizar PC e celular ☁️</h2>
+      <p class="desc">Use o mesmo app no computador e no celular com os mesmos dados. Tudo fica guardado no seu repositório <b>privado</b> do GitHub (grátis) e serve também de backup automático. Configure igual em cada aparelho.</p>
       <div class="fg mt" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
         <label>Repositório privado<input id="ghRepo" placeholder="CoelhoMario/cobrancas-dados" autocapitalize="off" autocomplete="off"></label>
         <label>Token do GitHub<input id="ghToken" type="password" placeholder="github_pat_…" autocapitalize="off" autocomplete="off"></label>
       </div>
-      <div class="row mt"><button class="primary" id="ghSalvar">Salvar e sincronizar</button><button id="ghTeste">Enviar resumo agora</button><button class="ghost danger" id="ghDesligar">Desligar</button></div>
+      <div class="row mt"><button class="primary" id="ghSalvar">Salvar e sincronizar</button><button id="ghAgora">🔄 Sincronizar agora</button><button class="ghost danger" id="ghDesligar">Desligar</button></div>
       <p class="desc mt" id="ghStatus"></p>
     </div>
     <div class="card mt">
@@ -453,7 +453,7 @@ tr.clic{cursor:pointer}
 
   // ---------- armazenamento local
   function carregar(){ try{ const d=JSON.parse(localStorage.getItem(KEY)||"[]"); itens=Array.isArray(d)?d:[]; }catch(_){ itens=[]; banner("Não consegui ler os dados salvos neste aparelho."); } }
-  function salvar(){ try{ localStorage.setItem(KEY,JSON.stringify(itens)); }catch(_){ banner("Não consegui salvar neste aparelho. Faça um backup agora."); } render(); try{ renderAgenda(); }catch(_){} try{ agendarSync(); }catch(_){} }
+  function salvar(){ try{ window.__carimbarItens&&window.__carimbarItens(); }catch(_){} try{ localStorage.setItem(KEY,JSON.stringify(itens)); }catch(_){ banner("Não consegui salvar neste aparelho. Faça um backup agora."); } render(); try{ renderAgenda(); }catch(_){} try{ agendarSync(); }catch(_){} }
   carregar();
   if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(()=>{});
 
@@ -699,7 +699,7 @@ tr.clic{cursor:pointer}
   // ---------- AGENDA
   const AK=KEY+"_agenda";
   let agenda=[]; try{ const a=JSON.parse(localStorage.getItem(AK)||"[]"); agenda=Array.isArray(a)?a:[]; }catch(_){ agenda=[]; }
-  function salvarAg(){ try{ localStorage.setItem(AK,JSON.stringify(agenda)); }catch(_){ banner("Não consegui salvar a agenda neste aparelho."); } render(); renderAgenda(); try{ agendarSync(); }catch(_){} try{ agendarGoogle(); }catch(_){} }
+  function salvarAg(){ try{ window.__carimbarAgenda&&window.__carimbarAgenda(); }catch(_){} try{ localStorage.setItem(AK,JSON.stringify(agenda)); }catch(_){ banner("Não consegui salvar a agenda neste aparelho."); } render(); renderAgenda(); try{ agendarSync(); }catch(_){} try{ agendarGoogle(); }catch(_){} }
   let calMes=hoje().slice(0,7), diaSel=hoje(), agId=null;
   const MESES_L=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
   const ordAg=(a,b)=>(a.data+(a.hora||"99")).localeCompare(b.data+(b.hora||"99"));
@@ -773,7 +773,7 @@ tr.clic{cursor:pointer}
     gStatus(!gcfg.clientId?"Configure o Client ID (⚙️) para conectar.":!gcfg.conectado?"Pronto para conectar.":gcfg.ultimo?"Sincronizado em "+new Date(gcfg.ultimo).toLocaleString("pt-BR")+".":"Conectado."); }
   $("#gCfgBtn").onclick=()=>{ const c=$("#gCfg"); c.style.display=c.style.display==="none"?"":"none"; };
   $("#gSalvarCfg").onclick=()=>{ const v=$("#gClientId").value.trim(); if(!/\.apps\.googleusercontent\.com$/.test(v)){ toast("Client ID inválido."); return; } if(v!==gcfg.clientId){ gTokenClient=null; gToken=null; } gcfg.clientId=v; gSave(); gUI(); $("#gCfg").style.display="none"; toast("Client ID salvo. Toque em Conectar."); };
-  $("#gDesconectar").onclick=()=>{ try{ if(gToken&&window.google) google.accounts.oauth2.revoke(gToken,()=>{}); }catch(_){} gcfg={clientId:gcfg.clientId}; gEvents=[]; gDel=[]; gToken=null; gTokenExp=0; agenda.forEach(e=>{ delete e.gid; e.gDirty=true; }); gSave(); try{ localStorage.setItem(AK,JSON.stringify(agenda)); }catch(_){} gUI(); renderAgenda(); toast("Google Agenda desconectado."); };
+  $("#gDesconectar").onclick=()=>{ try{ if(gToken&&window.google) google.accounts.oauth2.revoke(gToken,()=>{}); }catch(_){} gcfg={clientId:gcfg.clientId}; gEvents=[]; gDel=[]; gToken=null; gTokenExp=0; agenda.forEach(e=>{ delete e.gid; e.gDirty=true; }); gSave(); try{ window.__carimbarAgenda&&window.__carimbarAgenda(); localStorage.setItem(AK,JSON.stringify(agenda)); }catch(_){} try{ agendarSync(); }catch(_){} gUI(); renderAgenda(); toast("Google Agenda desconectado."); };
   function carregaGIS(){ return new Promise((ok,erro)=>{ if(window.google&&google.accounts&&google.accounts.oauth2) return ok(); const sc=document.createElement("script"); sc.src="https://accounts.google.com/gsi/client"; sc.async=true; sc.onload=()=>ok(); sc.onerror=()=>erro(new Error("Sem internet para falar com o Google.")); document.head.appendChild(sc); }); }
   async function pegaToken(interativo){
     if(gToken&&gTokenExp>Date.now()+60000) return gToken;
@@ -835,7 +835,7 @@ tr.clic{cursor:pointer}
         }
       }
       gEvents=externos; gcfg.ultimo=Date.now(); gSave();
-      try{ localStorage.setItem(AK,JSON.stringify(agenda)); }catch(_){}
+      try{ window.__carimbarAgenda&&window.__carimbarAgenda(); localStorage.setItem(AK,JSON.stringify(agenda)); }catch(_){} try{ agendarSync(); }catch(_){}
       renderAgenda(); gUI();
       if(interativo) toast("Google Agenda sincronizado.");
     }catch(e){ gStatus(e.message||"Erro ao sincronizar."); }
@@ -950,30 +950,62 @@ tr.clic{cursor:pointer}
 
 
 
-  // ---------- SINCRONIZAÇÃO COM GITHUB (resumo no WhatsApp)
-  const GK=KEY+"_gh";
+  // ---------- SINCRONIZAÇÃO PC ⇄ CELULAR (repositório privado no GitHub)
+  const GK=KEY+"_gh", EK=KEY+"_excl";
   let gh={}; try{ gh=JSON.parse(localStorage.getItem(GK)||"{}")||{}; }catch(_){ gh={}; }
+  let excl={}; try{ excl=JSON.parse(localStorage.getItem(EK)||"{}")||{}; }catch(_){ excl={}; }
   let syncTimer=null, sincronizando=false, pendente=false;
+  const snapI=new Map(), snapA=new Map();
+  const semMeta=o=>{ const {atualizadoEm,...r}=o; return JSON.stringify(r); };
+  function iniciarSnaps(){ snapI.clear(); snapA.clear(); for(const o of itens){ if(!o.atualizadoEm) o.atualizadoEm=o.criadoEm||"2000-01-01T00:00:00.000Z"; snapI.set(o.id,semMeta(o)); } for(const o of agenda){ if(!o.atualizadoEm) o.atualizadoEm=o.criadoEm||"2000-01-01T00:00:00.000Z"; snapA.set(o.id,semMeta(o)); } }
+  function carimbar(lista,snap){ const agora=new Date().toISOString(), vistos=new Set();
+    for(const o of lista){ vistos.add(o.id); const j=semMeta(o); if(snap.get(o.id)!==j){ if(snap.has(o.id)||!o.atualizadoEm) o.atualizadoEm=agora; snap.set(o.id,j); } }
+    let mudou=false; for(const id of [...snap.keys()]) if(!vistos.has(id)){ excl[id]=agora; snap.delete(id); mudou=true; }
+    if(mudou) try{ localStorage.setItem(EK,JSON.stringify(excl)); }catch(_){} }
+  window.__carimbarItens=()=>carimbar(itens,snapI);
+  window.__carimbarAgenda=()=>carimbar(agenda,snapA);
+  iniciarSnaps();
+  const canon=l=>JSON.stringify(l.slice().sort((a,b)=>String(a.id).localeCompare(String(b.id))));
+  function mesclar(loc,rem,ex){ const m=new Map(); for(const o of rem) if(o&&o.id) m.set(o.id,o); for(const o of loc){ const r=m.get(o.id); if(!r||(o.atualizadoEm||"")>=(r.atualizadoEm||"")) m.set(o.id,o); }
+    return [...m.values()].filter(o=>!(ex[o.id]&&ex[o.id]>=(o.atualizadoEm||""))); }
+  function ico(t){ $("#syncIco").textContent=t||""; }
   function ghStatus(m){ $("#ghStatus").textContent=m||""; }
-  function ghUI(){ $("#ghRepo").value=gh.repo||"CoelhoMario/cobrancas-dados"; $("#ghToken").value=gh.token?"••••••••••••":""; 
-    ghStatus(!gh.token?"Desligado.":gh.ultimo?"Sincronizado em "+new Date(gh.ultimo).toLocaleString("pt-BR")+".":"Configurado, aguardando primeira sincronização."); }
-  const b64=s=>btoa(unescape(encodeURIComponent(s)));
-  async function ghApi(path,opt){ const r=await fetch("https://api.github.com/repos/"+gh.repo+path,Object.assign({headers:{"Authorization":"Bearer "+gh.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"}},opt||{}));
+  function ghUI(){ $("#ghRepo").value=gh.repo||"CoelhoMario/cobrancas-dados"; $("#ghToken").value=gh.token?"••••••••••••":"";
+    ghStatus(!gh.token?"Desligado — os dados ficam só neste aparelho.":gh.ultimo?"✅ Sincronizado em "+new Date(gh.ultimo).toLocaleString("pt-BR")+".":"Configurado, aguardando primeira sincronização.");
+    ico(gh.token?(gh.erro?"⚠️":"☁️"):""); }
+  const b64e=s=>btoa(unescape(encodeURIComponent(s)));
+  const b64d=s=>decodeURIComponent(escape(atob(String(s).replace(/\s/g,""))));
+  async function ghApi(path,opt){ const r=await fetch("https://api.github.com/repos/"+gh.repo+path+(path.includes("?")?"&":"?")+"t="+Date.now(),Object.assign({cache:"no-store",headers:{"Authorization":"Bearer "+gh.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"}},opt||{}));
     if(!r.ok&&r.status!==404){ let msg=""; try{ msg=(await r.json()).message||""; }catch(_){} const e=new Error(msg||("HTTP "+r.status)); e.status=r.status; throw e; } return r; }
-  async function sincronizar(){
+  async function sincronizar(tentativa){
     if(!gh.token||!gh.repo) return;
     if(sincronizando){ pendente=true; return; }
-    sincronizando=true; ghStatus("Sincronizando…");
+    sincronizando=true; ico("🔄");
     try{
-      const g=await ghApi("/contents/dados.json"); let sha; if(g.status!==404){ sha=(await g.json()).sha; }
-      const corpo=JSON.stringify({app:"cobrancas-3dfigures",versao:2,atualizadoEm:new Date().toISOString(),itens,agenda});
-      await ghApi("/contents/dados.json",{method:"PUT",body:JSON.stringify({message:"Atualiza dados ("+new Date().toLocaleString("pt-BR")+")",content:b64(corpo),sha})});
-      gh.ultimo=Date.now(); try{ localStorage.setItem(GK,JSON.stringify(gh)); }catch(_){}
-      ghStatus("Sincronizado em "+new Date(gh.ultimo).toLocaleString("pt-BR")+".");
-    }catch(e){ ghStatus(e.status===401?"Token inválido ou expirado. Gere outro token.":e.status===403||e.status===404?"Sem permissão no repositório. Confira o nome e as permissões do token.":"Sem internet ou erro ("+e.message+"). Tento de novo depois."); }
+      try{ window.__carimbarItens(); window.__carimbarAgenda(); }catch(_){}
+      const g=await ghApi("/contents/dados.json"); let sha, rem={itens:[],agenda:[],excluidos:{}};
+      if(g.status!==404){ const j=await g.json(); sha=j.sha; try{ rem=JSON.parse(b64d(j.content||"")); }catch(_){ rem={itens:[],agenda:[],excluidos:{}}; } }
+      const remI=Array.isArray(rem.itens)?rem.itens:[], remA=Array.isArray(rem.agenda)?rem.agenda:[], remE=rem.excluidos||{};
+      const ex={...remE}; for(const [k,v] of Object.entries(excl)) if(!ex[k]||v>ex[k]) ex[k]=v;
+      const limite=new Date(Date.now()-120*864e5).toISOString(); for(const k of Object.keys(ex)) if(ex[k]<limite) delete ex[k];
+      const nI=mesclar(itens,remI,ex), nA=mesclar(agenda,remA,ex);
+      if(canon(nI)!==canon(itens)||canon(nA)!==canon(agenda)){
+        itens=nI; agenda=nA; excl=ex;
+        try{ localStorage.setItem(KEY,JSON.stringify(itens)); localStorage.setItem(KEY+"_agenda",JSON.stringify(agenda)); localStorage.setItem(EK,JSON.stringify(excl)); }catch(_){}
+        iniciarSnaps(); render(); try{ renderAgenda(); }catch(_){}
+      } else { excl=ex; try{ localStorage.setItem(EK,JSON.stringify(excl)); }catch(_){} }
+      if(canon(nI)!==canon(remI)||canon(nA)!==canon(remA)||JSON.stringify(ex)!==JSON.stringify(remE)||g.status===404){
+        const corpo=JSON.stringify({app:"cobrancas-3dfigures",versao:3,atualizadoEm:new Date().toISOString(),itens:nI,agenda:nA,excluidos:ex});
+        try{ await ghApi("/contents/dados.json",{method:"PUT",body:JSON.stringify({message:"Sincroniza ("+new Date().toLocaleString("pt-BR")+")",content:b64e(corpo),sha})}); }
+        catch(e){ if((e.status===409||e.status===422)&&!tentativa){ sincronizando=false; return sincronizar(true); } throw e; }
+      }
+      gh.ultimo=Date.now(); gh.erro=""; try{ localStorage.setItem(GK,JSON.stringify(gh)); }catch(_){}
+      ghUI();
+    }catch(e){ gh.erro=e.message; ico("⚠️");
+      ghStatus(e.status===401?"Token inválido ou expirado. Gere outro token.":e.status===403||e.status===404?"Sem permissão no repositório. Confira o nome e as permissões do token (Contents: leitura e escrita).":"Sem internet ou erro ("+e.message+"). Tento de novo depois."); }
     finally{ sincronizando=false; if(pendente){ pendente=false; agendarSync(); } }
   }
-  function agendarSync(){ if(!gh.token) return; clearTimeout(syncTimer); syncTimer=setTimeout(sincronizar,4000); }
+  function agendarSync(){ if(!gh.token) return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>sincronizar(),3000); }
   $("#ghSalvar").onclick=async()=>{
     const repo=$("#ghRepo").value.trim().replace(/^https?:\/\/github\.com\//,"").replace(/\.git$/,"").replace(/\/$/,"");
     const tk=$("#ghToken").value.trim();
@@ -981,18 +1013,13 @@ tr.clic{cursor:pointer}
     gh.repo=repo; if(tk&&!/^•+$/.test(tk)) gh.token=tk;
     if(!gh.token){ toast("Cole o token do GitHub."); return; }
     try{ localStorage.setItem(GK,JSON.stringify(gh)); }catch(_){}
-    ghUI(); await sincronizar();
+    ghUI(); ghStatus("Sincronizando…"); await sincronizar(); if(!gh.erro) toast("Sincronizado!");
   };
-  $("#ghTeste").onclick=async()=>{
-    if(!gh.token){ toast("Configure o token primeiro."); return; }
-    await sincronizar();
-    try{ const r=await ghApi("/actions/workflows/resumo.yml/dispatches",{method:"POST",body:JSON.stringify({ref:"main"})}); if(r.status===404) throw Object.assign(new Error("workflow não encontrado"),{status:404});
-      ghStatus("Pedido enviado! O resumo chega no seu WhatsApp em 1 a 2 minutos."); }
-    catch(e){ ghStatus(e.status===403?"O token precisa da permissão Actions (leitura e escrita).":"Não consegui disparar o envio ("+e.message+")."); }
-  };
-  $("#ghDesligar").onclick=()=>{ gh={}; try{ localStorage.removeItem(GK); }catch(_){} ghUI(); toast("Sincronização desligada."); };
+  $("#ghAgora").onclick=async()=>{ if(!gh.token){ toast("Configure o token primeiro."); return; } ghStatus("Sincronizando…"); await sincronizar(); if(!gh.erro) toast("Sincronizado!"); };
+  $("#ghDesligar").onclick=()=>{ gh={}; try{ localStorage.removeItem(GK); }catch(_){} ghUI(); toast("Sincronização desligada neste aparelho."); };
   ghUI();
-  if(gh.token&&(!gh.ultimo||Date.now()-gh.ultimo>3600e3)) setTimeout(sincronizar,2500);
+  if(gh.token) setTimeout(()=>sincronizar(),1200);
+  setInterval(()=>{ if(gh.token&&!document.hidden) sincronizar(); },60000);
   // ---------- PIN
   const PK=KEY+"_pin";
   let modo="entrar", digitado="", primeiro="", saiuEm=0;
@@ -1019,14 +1046,14 @@ tr.clic{cursor:pointer}
   document.addEventListener("keydown",e=>{ if(!$("#lock").classList.contains("on")) return; if(/^\d$/.test(e.key)&&digitado.length<4){ digitado+=e.key; pinsUI(); if(digitado.length===4) setTimeout(completo,120); } else if(e.key==="Backspace"){ digitado=digitado.slice(0,-1); pinsUI(); } });
   $("#lockEsqueci").onclick=()=>{ $("#lockMsg").innerHTML='Sem o PIN não dá para abrir. Para recomeçar, todos os lançamentos deste celular serão apagados (você pode restaurar um backup depois). <br><br><button id="apagarTudo" style="background:var(--red);border-color:var(--red);color:#1a0505">Apagar tudo e criar novo PIN</button>';
     $("#apagarTudo").onclick=()=>{ if($("#apagarTudo").dataset.ok!=="1"){ $("#apagarTudo").dataset.ok="1"; $("#apagarTudo").textContent="Toque de novo para confirmar"; return; }
-      itens=[]; try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY+"_agenda"); agenda=[]; localStorage.removeItem(PK); localStorage.removeItem(PK+"_sal"); }catch(_){} render(); travar("criar"); }; };
+      itens=[]; try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY+"_agenda"); agenda=[]; localStorage.removeItem(KEY+"_gh"); localStorage.removeItem(KEY+"_excl"); gh={}; excl={}; iniciarSnaps(); ghUI(); localStorage.removeItem(PK); localStorage.removeItem(PK+"_sal"); }catch(_){} render(); travar("criar"); }; };
   $("#btnTrocaPin").onclick=()=>travar("novo");
   $("#btnTravar").onclick=()=>travar("entrar");
   document.addEventListener("visibilitychange",()=>{ if(document.hidden) saiuEm=Date.now(); else if(saiuEm&&Date.now()-saiuEm>120000&&localStorage.getItem(PK)) travar("entrar"); });
   travar();
   render(); renderAgenda();
   // atualiza ao voltar para o app (vira o dia, etc.)
-  document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ carregar(); render(); renderAgenda(); if(gh.token&&(!gh.ultimo||Date.now()-gh.ultimo>3600e3)) sincronizar(); if(gcfg.conectado&&gToken&&gTokenExp>Date.now()) agendarGoogle(); } });
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ carregar(); render(); renderAgenda(); if(gh.token) sincronizar(); if(gcfg.conectado&&gToken&&gTokenExp>Date.now()) agendarGoogle(); } });
 })();
 </script>
 
